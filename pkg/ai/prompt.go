@@ -101,7 +101,7 @@ func BuildPrompt(req RenameRequest) string {
 
 // ValidateFilename checks if the generated filename is valid
 func ValidateFilename(filename string) bool {
-	if len(filename) == 0 || len(filename) > 100 {
+	if len(filename) == 0 || len(filename) > 200 {
 		return false
 	}
 
@@ -164,12 +164,26 @@ func SanitizeFilename(filename string) string {
 			ext := filename[lastDot:]
 			if len(ext) < 10 { // 合理的扩展名长度
 				maxBase := 200 - len(ext)
-				filename = filename[:maxBase] + ext
+				// 使用rune来正确处理UTF-8字符
+				runes := []rune(filename[:maxBase])
+				filename = string(runes) + ext
+			} else {
+				// 使用rune来正确处理UTF-8字符
+				runes := []rune(filename)
+				if len(runes) > 200 {
+					filename = string(runes[:200])
+				} else {
+					filename = filename[:200]
+				}
+			}
+		} else {
+			// 使用rune来正确处理UTF-8字符
+			runes := []rune(filename)
+			if len(runes) > 200 {
+				filename = string(runes[:200])
 			} else {
 				filename = filename[:200]
 			}
-		} else {
-			filename = filename[:200]
 		}
 	}
 

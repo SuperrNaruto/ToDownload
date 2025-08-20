@@ -31,8 +31,7 @@ func handleMediaMessage(ctx *ext.Context, update *ext.Update) error {
 		return err
 	}
 	userId := update.GetUserChat().GetID()
-	stors := storage.GetUserStorages(ctx, userId)
-	req, err := msgelem.BuildAddOneSelectStorageMessage(ctx, stors, file, msg.ID)
+	req, err := msgelem.BuildAddOneSelectStorageMessage(ctx, userId, file, msg.ID)
 	if err != nil {
 		logger.Errorf("构建存储选择消息失败: %s", err)
 		ctx.Reply(update, ext.ReplyTextString("构建存储选择消息失败: "+err.Error()), nil)
@@ -135,8 +134,7 @@ func processMediaGroup(ctx *ext.Context, update *ext.Update, groupID int64) {
 		return
 	}
 
-	stors := storage.GetUserStorages(ctx, userId)
-	markup, err := msgelem.BuildAddSelectStorageKeyboard(stors, tcbdata.Add{
+	markup, err := msgelem.BuildAddSelectStorageKeyboard(ctx, userId, tcbdata.Add{
 		Files:   items,
 		AsBatch: len(items) > 1,
 	})

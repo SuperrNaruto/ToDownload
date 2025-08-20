@@ -38,7 +38,7 @@ func handleSilentMode(next func(*ext.Context, *ext.Update) error, handler func(*
 			ctx.Reply(update, ext.ReplyTextString("您已开启静默模式, 但未设置默认存储端, 请先使用 /storage 设置"), nil)
 			return next(ctx, update)
 		}
-		stor, err := storage.GetStorageByUserIDAndName(ctx, userID, user.DefaultStorage)
+		stor, err := storage.Manager.GetUserStorageByName(ctx, userID, user.DefaultStorage)
 		if err != nil {
 			ctx.Reply(update, ext.ReplyTextString("获取默认存储失败: "+err.Error()), nil)
 			return dispatcher.EndGroups

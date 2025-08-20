@@ -48,7 +48,7 @@ func handleSetDefaultCallback(ctx *ext.Context, update *ext.Update) error {
 	userID := update.CallbackQuery.GetUserID()
 
 	storageName := data.StorageName
-	selectedStorage, err := storage.GetStorageByUserIDAndName(ctx, userID, storageName)
+	selectedStorage, err := storage.Manager.GetUserStorageByName(ctx, userID, storageName)
 	if err != nil {
 		ctx.AnswerCallback(&tg.MessagesSetBotCallbackAnswerRequest{
 			QueryID:   update.CallbackQuery.GetQueryID(),
@@ -87,12 +87,16 @@ func handleSetDefaultCallback(ctx *ext.Context, update *ext.Update) error {
 
 func handleStorageCmd(ctx *ext.Context, update *ext.Update) error {
 	userID := update.GetUserChat().GetID()
-	storages := storage.GetUserStorages(ctx, userID)
-	if len(storages) == 0 {
-		ctx.Reply(update, ext.ReplyTextString("无可用的存储"), nil)
-		return nil
+	// 通过存储管理器获取所有存储，如果为空则回退到系统存储检查
+	allStorages, _ := storage.Manager.GetAllUserStorages(ctx, userID)
+	if len(allStorages) == 0 {
+		systemStorages := storage.GetUserStorages(ctx, userID)
+		if len(systemStorages) == 0 {
+			ctx.Reply(update, ext.ReplyTextString("无可用的存储"), nil)
+			return nil
+		}
 	}
-	markup, err := msgelem.BuildSetDefaultStorageMarkup(ctx, userID, storages)
+	markup, err := msgelem.BuildSetDefaultStorageMarkup(ctx, userID)
 	if err != nil {
 		ctx.Reply(update, ext.ReplyTextString("获取存储失败: "+err.Error()), nil)
 		return nil

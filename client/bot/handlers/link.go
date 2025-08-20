@@ -19,9 +19,8 @@ func handleMessageLink(ctx *ext.Context, update *ext.Update) error {
 	}
 	logger := log.FromContext(ctx)
 	userId := update.GetUserChat().GetID()
-	stors := storage.GetUserStorages(ctx, userId)
 	if len(files) == 1 {
-		req, err := msgelem.BuildAddOneSelectStorageMessage(ctx, stors, files[0], replied.ID)
+		req, err := msgelem.BuildAddOneSelectStorageMessage(ctx, userId, files[0], replied.ID)
 		if err != nil {
 			logger.Errorf("构建存储选择消息失败: %s", err)
 			editReplied("构建存储选择消息失败: "+err.Error(), nil)
@@ -30,7 +29,7 @@ func handleMessageLink(ctx *ext.Context, update *ext.Update) error {
 		ctx.EditMessage(update.EffectiveChat().GetID(), req)
 		return dispatcher.EndGroups
 	}
-	markup, err := msgelem.BuildAddSelectStorageKeyboard(stors, tcbdata.Add{
+	markup, err := msgelem.BuildAddSelectStorageKeyboard(ctx, userId, tcbdata.Add{
 		Files: files,
 	})
 	if err != nil {

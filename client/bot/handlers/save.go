@@ -47,8 +47,7 @@ func handleSaveCmd(ctx *ext.Context, update *ext.Update) error {
 		return err
 	}
 	userId := update.GetUserChat().GetID()
-	stors := storage.GetUserStorages(ctx, userId)
-	req, err := msgelem.BuildAddOneSelectStorageMessage(ctx, stors, file, msg.ID)
+	req, err := msgelem.BuildAddOneSelectStorageMessage(ctx, userId, file, msg.ID)
 	if err != nil {
 		logger.Errorf("构建存储选择消息失败: %s", err)
 		ctx.Reply(update, ext.ReplyTextString("构建存储选择消息失败: "+err.Error()), nil)
@@ -172,8 +171,8 @@ func handleBatchSave(ctx *ext.Context, update *ext.Update, args []string) error 
 	stor := storage.FromContext(ctx)
 	if stor == nil {
 		// not in silent mode
-		stors := storage.GetUserStorages(ctx, update.GetUserChat().GetID())
-		markup, err := msgelem.BuildAddSelectStorageKeyboard(stors, tcbdata.Add{
+		userID := update.GetUserChat().GetID()
+		markup, err := msgelem.BuildAddSelectStorageKeyboard(ctx, userID, tcbdata.Add{
 			Files: files,
 		})
 		if err != nil {

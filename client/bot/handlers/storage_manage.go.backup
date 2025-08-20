@@ -871,6 +871,200 @@ func handleStorageTypeCallback(ctx *ext.Context, update *ext.Update) error {
 
 
 // handleStorageEditCallback 处理编辑配置回调
+func handleStorageEditCallback(ctx *ext.Context, update *ext.Update) error {
+	// 解析存储ID
+	callbackData := string(update.CallbackQuery.Data)
+	parts := strings.Split(callbackData, " ")
+	if len(parts) != 2 {
+		ctx.AnswerCallback(&tg.MessagesSetBotCallbackAnswerRequest{
+			QueryID: update.CallbackQuery.GetQueryID(),
+			Alert:   true,
+			Message: "无效的操作数据",
+		})
+		return dispatcher.EndGroups
+	}
+
+	storageIDStr := parts[1]
+	storageID, err := strconv.ParseUint(storageIDStr, 10, 32)
+	if err != nil {
+		ctx.AnswerCallback(&tg.MessagesSetBotCallbackAnswerRequest{
+			QueryID: update.CallbackQuery.GetQueryID(),
+			Alert:   true,
+			Message: "无效的存储ID",
+		})
+		return dispatcher.EndGroups
+	}
+
+	userID := update.CallbackQuery.GetUserID()
+
+	// 获取存储信息
+	userStorage, err := database.GetUserStorageByID(ctx, uint(storageID))
+	if err != nil || userStorage == nil {
+		ctx.AnswerCallback(&tg.MessagesSetBotCallbackAnswerRequest{
+			QueryID: update.CallbackQuery.GetQueryID(),
+			Alert:   true,
+			Message: "存储配置不存在",
+		})
+		return dispatcher.EndGroups
+	}
+
+	// 验证用户权限
+	user, err := database.GetUserByChatID(ctx, userID)
+	if err != nil || user.ID != userStorage.UserID {
+		ctx.AnswerCallback(&tg.MessagesSetBotCallbackAnswerRequest{
+			QueryID: update.CallbackQuery.GetQueryID(),
+			Alert:   true,
+			Message: "无权限访问此存储配置",
+		})
+		return dispatcher.EndGroups
+	}
+
+	// 显示当前配置并开始编辑向导
+	var configData map[string]interface{}
+	if err := json.Unmarshal([]byte(userStorage.Config), &configData); err != nil {
+		ctx.AnswerCallback(&tg.MessagesSetBotCallbackAnswerRequest{
+			QueryID: update.CallbackQuery.GetQueryID(),
+			Alert:   true,
+			Message: "解析存储配置失败",
+		})
+		return dispatcher.EndGroups
+	}
+
+	configText := "📝 当前配置:\n\n"
+	for key, value := range configData {
+		if key == "password" || key == "secret_key" {
+			configText += fmt.Sprintf("• %s: %s\n", key, "******")
+		} else {
+			configText += fmt.Sprintf("• %s: %v\n", key, value)
+		}
+	}
+
+	configText += "\n🔧 请发送新的配置信息 (格式与添加时相同)"
+
+	ctx.EditMessage(update.EffectiveChat().GetID(), &tg.MessagesEditMessageRequest{
+		ID:      update.CallbackQuery.GetMsgID(),
+		Message: configText,
+		ReplyMarkup: &tg.ReplyInlineMarkup{
+			Rows: []tg.KeyboardButtonRow{
+				{
+					Buttons: []tg.KeyboardButtonClass{
+						&tg.KeyboardButtonCallback{
+							Text: "❌ 取消",
+							Data: []byte("cancel"),
+						},
+					},
+				},
+			},
+		},
+	})
+
+	ctx.AnswerCallback(&tg.MessagesSetBotCallbackAnswerRequest{
+		QueryID: update.CallbackQuery.GetQueryID(),
+	})
+
+	// 开始配置编辑向导
+	return startStorageConfigWizard(ctx, update, userStorage.Name, userStorage.Type, userStorage.Description)
+}
+
+// handleStorageDeleteCallback 处理删除存储回调
+func handleStorageDeleteCallback(ctx *ext.Context, update *ext.Update) error {
+	// 解析存储ID
+	callbackData := string(update.CallbackQuery.Data)
+	parts := strings.Split(callbackData, " ")
+	if len(parts) != 2 {
+		ctx.AnswerCallback(&tg.MessagesSetBotCallbackAnswerRequest{
+			QueryID: update.CallbackQuery.GetQueryID(),
+			Alert:   true,
+			Message: "无效的操作数据",
+		})
+		return dispatcher.EndGroups
+	}
+
+	storageIDStr := parts[1]
+	storageID, err := strconv.ParseUint(storageIDStr, 10, 32)
+	if err != nil {
+		ctx.AnswerCallback(&tg.MessagesSetBotCallbackAnswerRequest{
+			QueryID: update.CallbackQuery.GetQueryID(),
+			Alert:   true,
+			Message: "无效的存储ID",
+		})
+		return dispatcher.EndGroups
+	}
+
+	userID := update.CallbackQuery.GetUserID()
+
+	// 获取存储信息
+	userStorage, err := database.GetUserStorageByID(ctx, uint(storageID))
+	if err != nil || userStorage == nil {
+		ctx.AnswerCallback(&tg.MessagesSetBotCallbackAnswerRequest{
+			QueryID: update.CallbackQuery.GetQueryID(),
+			Alert:   true,
+			Message: "存储配置不存在",
+		})
+		return dispatcher.EndGroups
+	}
+
+	// 验证用户权限
+	user, err := database.GetUserByChatID(ctx, userID)
+	if err != nil || user.ID != userStorage.UserID {
+		ctx.AnswerCallback(&tg.MessagesSetBotCallbackAnswerRequest{
+			QueryID: update.CallbackQuery.GetQueryID(),
+			Alert:   true,
+			Message: "无权限访问此存储配置",
+		})
+		return dispatcher.EndGroups
+	}
+
+	// 检查是否为默认存储
+	if user.DefaultStorage == userStorage.Name {
+		ctx.AnswerCallback(&tg.MessagesSetBotCallbackAnswerRequest{
+			QueryID: update.CallbackQuery.GetQueryID(),
+			Alert:   true,
+			Message: "❌ 无法删除默认存储，请先设置其他存储为默认",
+		})
+		return dispatcher.EndGroups
+	}
+
+	// 创建确认按钮
+	confirmData := tcbdata.DeleteStorageConfirm{
+		StorageID: userStorage.ID,
+		ChatID:    userID,
+	}
+	dataID := fmt.Sprintf("confirm_delete_%d_%d", confirmData.ChatID, confirmData.StorageID)
+	cache.Set(dataID, confirmData)
+
+	markup := &tg.ReplyInlineMarkup{
+		Rows: []tg.KeyboardButtonRow{
+			{
+				Buttons: []tg.KeyboardButtonClass{
+					&tg.KeyboardButtonCallback{
+						Text: "🗑️ 确认删除",
+						Data: []byte(tcbdata.TypeDeleteStorageConfirm + " " + dataID),
+					},
+					&tg.KeyboardButtonCallback{
+						Text: "❌ 取消",
+						Data: []byte("cancel"),
+					},
+				},
+			},
+		},
+	}
+
+	confirmText := fmt.Sprintf("⚠️ 确认删除存储配置 '%s'?\n\n此操作不可撤销！", userStorage.Name)
+	ctx.EditMessage(update.EffectiveChat().GetID(), &tg.MessagesEditMessageRequest{
+		ID:          update.CallbackQuery.GetMsgID(),
+		Message:     confirmText,
+		ReplyMarkup: markup,
+	})
+
+	ctx.AnswerCallback(&tg.MessagesSetBotCallbackAnswerRequest{
+		QueryID: update.CallbackQuery.GetQueryID(),
+	})
+
+	return dispatcher.EndGroups
+}
+
+// handleStorageTestCallback 处理测试连接回调
 func handleStorageTestCallback(ctx *ext.Context, update *ext.Update) error {
 	// 解析存储ID
 	callbackData := string(update.CallbackQuery.Data)

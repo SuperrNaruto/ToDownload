@@ -35,6 +35,10 @@ func Register(disp dispatcher.Dispatcher) {
 	disp.AddHandler(handlers.NewCommand("help", handleHelpCmd))
 	disp.AddHandler(handlers.NewCommand("silent", handleSilentCmd))
 	disp.AddHandler(handlers.NewCommand("storage", handleStorageCmd))
+	disp.AddHandler(handlers.NewCommand("storage_list", handleStorageListCmd))
+	disp.AddHandler(handlers.NewCommand("storage_edit", handleStorageEditCmd))
+	disp.AddHandler(handlers.NewCommand("storage_delete", handleStorageDeleteCmd))
+	disp.AddHandler(handlers.NewCommand("storage_test", handleStorageTestCmd))
 	disp.AddHandler(handlers.NewCommand("dir", handleDirCmd))
 	disp.AddHandler(handlers.NewCommand("rule", handleRuleCmd))
 	disp.AddHandler(handlers.NewCommand("watch", handleWatchCmd))
@@ -44,6 +48,15 @@ func Register(disp dispatcher.Dispatcher) {
 	disp.AddHandler(handlers.NewCommand("ai_toggle", handleAIToggleCmd))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix(tcbdata.TypeAdd), handleAddCallback))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix(tcbdata.TypeSetDefault), handleSetDefaultCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix(tcbdata.TypeDeleteStorageConfirm), handleDeleteStorageConfirmCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix(tcbdata.TypeStorageToggle), handleStorageToggleCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("storage_info"), handleStorageInfoCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("storage_add_start"), handleStorageAddStartCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("storage_back_to_list"), handleStorageBackToListCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("storage_type_"), handleStorageTypeCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("storage_test"), handleStorageTestCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("storage_edit"), handleStorageEditCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("storage_delete"), handleStorageDeleteCallback))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("cancel"), handleCancelCallback))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("ai_"), handleAIToggleCallback))
 	linkRegexFilter, err := filters.Message.Regex(re.TgMessageLinkRegexString)
@@ -57,6 +70,8 @@ func Register(disp dispatcher.Dispatcher) {
 	}
 	disp.AddHandler(handlers.NewMessage(telegraphUrlRegexFilter, handleSilentMode(handleTelegraphUrlMessage, handleSilentSaveTelegraph)))
 	disp.AddHandler(handlers.NewMessage(filters.Message.Media, handleSilentMode(handleMediaMessage, handleSilentSaveMedia)))
+	// 添加存储配置响应处理器（需要在其他消息处理器之前）
+	disp.AddHandler(handlers.NewMessage(filters.Message.Text, handleStorageConfigResponse))
 
 	if config.Cfg.Telegram.Userbot.Enable {
 		go listenMediaMessageEvent(userclient.GetMediaMessageCh())
@@ -105,7 +120,7 @@ func listenMediaMessageEvent(ch chan userclient.MediaMessageEvent) {
 				logger.Warnf("User %d has no default storage set, skipping media message handling", chat.UserID)
 				continue
 			}
-			stor, err := storage.GetStorageByUserIDAndName(ctx, user.ChatID, user.DefaultStorage)
+			stor, err := storage.Manager.GetUserStorageByName(ctx, user.ChatID, user.DefaultStorage)
 			if err != nil {
 				logger.Errorf("Failed to get storage by user ID %d and name %s: %v", user.ChatID, user.DefaultStorage, err)
 				continue
@@ -115,7 +130,7 @@ func listenMediaMessageEvent(ch chan userclient.MediaMessageEvent) {
 				matchedStorageName, matchedDirPath := ruleutil.ApplyRule(ctx, user.Rules, ruleutil.NewInput(file))
 				dirPath = matchedDirPath.String()
 				if matchedStorageName.IsUsable() {
-					stor, err = storage.GetStorageByUserIDAndName(ctx, user.ChatID, matchedStorageName.String())
+					stor, err = storage.Manager.GetUserStorageByName(ctx, user.ChatID, matchedStorageName.String())
 					if err != nil {
 						logger.Errorf("Failed to get storage by user ID and name: %s", err)
 						continue

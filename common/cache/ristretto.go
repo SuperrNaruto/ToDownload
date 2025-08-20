@@ -51,3 +51,7 @@ func Get[T any](key string) (T, bool) {
 	}
 	return vT, true
 }
+
+func Del(key string) {
+	cache.Del(key)
+}

@@ -17,7 +17,13 @@ import (
 	"github.com/rs/xid"
 )
 
-func BuildAddSelectStorageKeyboard(stors []storage.Storage, adddata tcbdata.Add) (*tg.ReplyInlineMarkup, error) {
+func BuildAddSelectStorageKeyboard(ctx context.Context, chatID int64, adddata tcbdata.Add) (*tg.ReplyInlineMarkup, error) {
+	// 获取所有可用存储（系统配置 + 用户自定义）
+	stors, err := storage.Manager.GetAllUserStorages(ctx, chatID)
+	if err != nil {
+		// 如果获取失败，回退到系统存储
+		stors = storage.GetUserStorages(ctx, chatID)
+	}
 	taskType := adddata.TaskType
 	if taskType == "" {
 		if len(adddata.Files) > 0 {
@@ -61,7 +67,7 @@ func BuildAddSelectStorageKeyboard(stors []storage.Storage, adddata tcbdata.Add)
 	return markup, nil
 }
 
-func BuildAddOneSelectStorageMessage(ctx context.Context, stors []storage.Storage, file tfile.TGFileMessage, msgId int) (*tg.MessagesEditMessageRequest, error) {
+func BuildAddOneSelectStorageMessage(ctx context.Context, chatID int64, file tfile.TGFileMessage, msgId int) (*tg.MessagesEditMessageRequest, error) {
 	eb := entity.Builder{}
 	var entities []tg.MessageEntityClass
 	text := fmt.Sprintf("文件名: %s\n请选择存储位置", file.Name())
@@ -74,7 +80,7 @@ func BuildAddOneSelectStorageMessage(ctx context.Context, stors []storage.Storag
 	} else {
 		text, entities = eb.Complete()
 	}
-	markup, err := BuildAddSelectStorageKeyboard(stors, tcbdata.Add{
+	markup, err := BuildAddSelectStorageKeyboard(ctx, chatID, tcbdata.Add{
 		TaskType: tasktype.TaskTypeTgfiles,
 		Files:    []tfile.TGFileMessage{file},
 		AsBatch:  false,
@@ -90,7 +96,13 @@ func BuildAddOneSelectStorageMessage(ctx context.Context, stors []storage.Storag
 	}, nil
 }
 
-func BuildSetDefaultStorageMarkup(ctx context.Context, userID int64, stors []storage.Storage) (*tg.ReplyInlineMarkup, error) {
+func BuildSetDefaultStorageMarkup(ctx context.Context, userID int64) (*tg.ReplyInlineMarkup, error) {
+	// 获取所有可用存储（系统配置 + 用户自定义）
+	stors, err := storage.Manager.GetAllUserStorages(ctx, userID)
+	if err != nil {
+		// 如果获取失败，回退到系统存储
+		stors = storage.GetUserStorages(ctx, userID)
+	}
 	buttons := make([]tg.KeyboardButtonClass, 0)
 	for _, storage := range stors {
 		data := tcbdata.SetDefaultStorage{
@@ -158,4 +170,125 @@ func BuildSetDirKeyboard(dirs []database.Dir, dataid string) (*tg.ReplyInlineMar
 		markup.Rows = append(markup.Rows, row)
 	}
 	return markup, nil
+}
+
+// BuildStorageManageMarkup 构建存储管理按钮
+func BuildStorageManageMarkup(ctx context.Context, userStorages []database.UserStorage) (*tg.ReplyInlineMarkup, error) {
+	var rows []tg.KeyboardButtonRow
+
+	// 为每个存储添加操作按钮
+	for _, storage := range userStorages {
+		var statusIcon string
+		var toggleText string
+		if storage.Enable {
+			statusIcon = "🟢"
+			toggleText = "禁用"
+		} else {
+			statusIcon = "🔴"
+			toggleText = "启用"
+		}
+
+		row := tg.KeyboardButtonRow{
+			Buttons: []tg.KeyboardButtonClass{
+				&tg.KeyboardButtonCallback{
+					Text: fmt.Sprintf("%s %s", statusIcon, storage.Name),
+					Data: []byte(fmt.Sprintf("storage_info %d", storage.ID)),
+				},
+				&tg.KeyboardButtonCallback{
+					Text: toggleText,
+					Data: []byte(fmt.Sprintf("%s %d", tcbdata.TypeStorageToggle, storage.ID)),
+				},
+			},
+		}
+		rows = append(rows, row)
+	}
+
+	// 添加通用操作按钮
+	actionRow := tg.KeyboardButtonRow{
+		Buttons: []tg.KeyboardButtonClass{
+			&tg.KeyboardButtonCallback{
+				Text: "➕ 添加存储",
+				Data: []byte("storage_add_start"),
+			},
+		},
+	}
+	rows = append(rows, actionRow)
+
+	return &tg.ReplyInlineMarkup{Rows: rows}, nil
+}
+
+// BuildStorageTypeSelectMarkup 构建存储类型选择按钮
+func BuildStorageTypeSelectMarkup() *tg.ReplyInlineMarkup {
+	return &tg.ReplyInlineMarkup{
+		Rows: []tg.KeyboardButtonRow{
+			{
+				Buttons: []tg.KeyboardButtonClass{
+					&tg.KeyboardButtonCallback{
+						Text: "📁 Alist",
+						Data: []byte("storage_type_alist"),
+					},
+					&tg.KeyboardButtonCallback{
+						Text: "🌐 WebDAV",
+						Data: []byte("storage_type_webdav"),
+					},
+				},
+			},
+			{
+				Buttons: []tg.KeyboardButtonClass{
+					&tg.KeyboardButtonCallback{
+						Text: "☁️ MinIO/S3",
+						Data: []byte("storage_type_minio"),
+					},
+					&tg.KeyboardButtonCallback{
+						Text: "💾 本地存储",
+						Data: []byte("storage_type_local"),
+					},
+				},
+			},
+			{
+				Buttons: []tg.KeyboardButtonClass{
+					&tg.KeyboardButtonCallback{
+						Text: "📱 Telegram",
+						Data: []byte("storage_type_telegram"),
+					},
+					&tg.KeyboardButtonCallback{
+						Text: "❌ 取消",
+						Data: []byte("cancel"),
+					},
+				},
+			},
+		},
+	}
+}
+
+// BuildStorageDetailMarkup 构建存储详情操作按钮
+func BuildStorageDetailMarkup(storageID uint) *tg.ReplyInlineMarkup {
+	return &tg.ReplyInlineMarkup{
+		Rows: []tg.KeyboardButtonRow{
+			{
+				Buttons: []tg.KeyboardButtonClass{
+					&tg.KeyboardButtonCallback{
+						Text: "✏️ 编辑",
+						Data: []byte(fmt.Sprintf("storage_edit %d", storageID)),
+					},
+					&tg.KeyboardButtonCallback{
+						Text: "🧪 测试",
+						Data: []byte(fmt.Sprintf("storage_test %d", storageID)),
+					},
+				},
+			},
+			{
+				Buttons: []tg.KeyboardButtonClass{
+					&tg.KeyboardButtonCallback{
+						Text: "🗑️ 删除",
+						Data: []byte(fmt.Sprintf("storage_delete %d", storageID)),
+					},
+					&tg.KeyboardButtonCallback{
+						Text: "⬅️ 返回",
+						Data: []byte("storage_list_refresh"),
+					},
+				},
+			},
+		},
+	}
 }

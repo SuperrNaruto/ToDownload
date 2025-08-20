@@ -66,3 +66,9 @@ func LoadStorageConfigs(v *viper.Viper) ([]StorageConfig, error) {
 
 	return configs, nil
 }
+
+// GetStorageFactory 获取存储工厂函数
+func GetStorageFactory(storageType storenum.StorageType) (func(cfg *BaseConfig) (StorageConfig, error), bool) {
+	factory, ok := storageFactories[storageType]
+	return factory, ok
+}

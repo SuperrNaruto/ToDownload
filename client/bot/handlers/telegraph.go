@@ -24,8 +24,7 @@ func handleTelegraphUrlMessage(ctx *ext.Context, update *ext.Update) error {
 		return err
 	}
 	userID := update.GetUserChat().GetID()
-	stors := storage.GetUserStorages(ctx, userID)
-	markup, err := msgelem.BuildAddSelectStorageKeyboard(stors, tcbdata.Add{
+	markup, err := msgelem.BuildAddSelectStorageKeyboard(ctx, userID, tcbdata.Add{
 		TaskType:    tasktype.TaskTypeTphpics,
 		TphPageNode: result.Page,
 		TphDirPath:  result.TphDir,

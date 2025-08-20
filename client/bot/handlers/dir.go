@@ -39,7 +39,7 @@ func handleDirCmd(ctx *ext.Context, update *ext.Update) error {
 			ctx.Reply(update, ext.ReplyTextStyledTextArray(msgelem.BuildDirHelpStyling(dirs)), nil)
 			return dispatcher.EndGroups
 		}
-		if _, err := storage.GetStorageByUserIDAndName(ctx, user.ChatID, args[2]); err != nil {
+		if _, err := storage.Manager.GetUserStorageByName(ctx, user.ChatID, args[2]); err != nil {
 			ctx.Reply(update, ext.ReplyTextString(err.Error()), nil)
 			return dispatcher.EndGroups
 		}

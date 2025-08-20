@@ -28,7 +28,7 @@ func handleAddCallback(ctx *ext.Context, update *ext.Update) error {
 	msgID := update.CallbackQuery.GetMsgID()
 	userID := update.CallbackQuery.GetUserID()
 
-	selectedStorage, err := storage.GetStorageByUserIDAndName(ctx, userID, data.SelectedStorName)
+	selectedStorage, err := storage.Manager.GetUserStorageByName(ctx, userID, data.SelectedStorName)
 	if err != nil {
 		log.FromContext(ctx).Errorf("Failed to get storage: %s", err)
 		ctx.AnswerCallback(msgelem.AlertCallbackAnswer(queryID, "存储获取失败: "+err.Error()))

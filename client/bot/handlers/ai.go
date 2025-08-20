@@ -144,9 +144,16 @@ func handleAIToggleCallback(ctx *ext.Context, update *ext.Update) error {
 		// Enable AI functionality
 		if config.Cfg.AI.BaseURL != "" && config.Cfg.AI.APIKey != "" && config.Cfg.AI.Model != "" {
 			config.Cfg.AI.Enable = true
-			responseMsg = "✅ AI重命名功能已启用"
-			success = true
-			logger.Info("AI rename functionality enabled via bot command")
+			// Reinitialize AI service with new configuration
+			if err := tgutil.InitAIRenameService(ctx, config.Cfg); err != nil {
+				logger.Errorf("Failed to initialize AI rename service: %v", err)
+				responseMsg = "❌ AI服务初始化失败"
+				success = false
+			} else {
+				responseMsg = "✅ AI重命名功能已启用"
+				success = true
+				logger.Info("AI rename functionality enabled via bot command")
+			}
 		} else {
 			responseMsg = "❌ 无法启用：AI配置不完整"
 			success = false
@@ -155,9 +162,16 @@ func handleAIToggleCallback(ctx *ext.Context, update *ext.Update) error {
 	case "ai_disable":
 		// Disable AI functionality
 		config.Cfg.AI.Enable = false
-		responseMsg = "❌ AI重命名功能已禁用"
-		success = true
-		logger.Info("AI rename functionality disabled via bot command")
+		// Reinitialize AI service as disabled
+		if err := tgutil.InitAIRenameService(ctx, config.Cfg); err != nil {
+			logger.Errorf("Failed to reinitialize AI rename service as disabled: %v", err)
+			responseMsg = "❌ AI服务关闭失败"
+			success = false
+		} else {
+			responseMsg = "❌ AI重命名功能已禁用"
+			success = true
+			logger.Info("AI rename functionality disabled via bot command")
+		}
 
 	case "ai_refresh":
 		// Refresh status - rebuild the toggle interface

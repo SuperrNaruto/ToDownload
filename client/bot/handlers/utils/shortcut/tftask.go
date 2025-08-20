@@ -39,7 +39,7 @@ func CreateAndAddTGFileTaskWithEdit(ctx *ext.Context, userID int64, stor storage
 		matchedStorageName, matchedDirPath := ruleutil.ApplyRule(ctx, user.Rules, ruleutil.NewInput(file))
 		dirPath = matchedDirPath.String()
 		if matchedStorageName.IsUsable() {
-			stor, err = storage.GetStorageByUserIDAndName(ctx, user.ChatID, matchedStorageName.String())
+			stor, err = storage.Manager.GetUserStorageByName(ctx, user.ChatID, matchedStorageName.String())
 			if err != nil {
 				logger.Errorf("Failed to get storage by user ID and name: %s", err)
 				ctx.EditMessage(userID, &tg.MessagesEditMessageRequest{
@@ -129,7 +129,7 @@ func CreateAndAddBatchTGFileTaskWithEdit(ctx *ext.Context, userID int64, stor st
 		storName, dirPath := applyRule(file)
 		fileStor := stor
 		if storName != stor.Name() && storName != "" {
-			fileStor, err = storage.GetStorageByUserIDAndName(ctx, user.ChatID, storName)
+			fileStor, err = storage.Manager.GetUserStorageByName(ctx, user.ChatID, storName)
 			if err != nil {
 				logger.Errorf("Failed to get storage by user ID and name: %s", err)
 				ctx.EditMessage(userID, &tg.MessagesEditMessageRequest{

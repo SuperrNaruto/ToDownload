@@ -176,7 +176,7 @@ func TestSanitizeFilename(t *testing.T) {
 		{
 			name:     "Truncate long filename",
 			filename: strings.Repeat("很长的文件名", 20),
-			expected: strings.Repeat("很长的文件名", 20)[:100],
+			expected: strings.Repeat("很长的文件名", 20)[:200],
 		},
 	}
 

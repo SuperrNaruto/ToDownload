@@ -41,11 +41,11 @@ func Register(disp dispatcher.Dispatcher) {
 	disp.AddHandler(handlers.NewCommand("unwatch", handleUnwatchCmd))
 	disp.AddHandler(handlers.NewCommand("save", handleSilentMode(handleSaveCmd, handleSilentSaveReplied)))
 	disp.AddHandler(handlers.NewCommand("ai_status", handleAIStatusCmd))
-	disp.AddHandler(handlers.NewCommand("ai_test", handleAITestCmd))
-	disp.AddHandler(handlers.NewCommand("ai_help", handleAIHelpCmd))
+	disp.AddHandler(handlers.NewCommand("ai_toggle", handleAIToggleCmd))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix(tcbdata.TypeAdd), handleAddCallback))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix(tcbdata.TypeSetDefault), handleSetDefaultCallback))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("cancel"), handleCancelCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("ai_"), handleAIToggleCallback))
 	linkRegexFilter, err := filters.Message.Regex(re.TgMessageLinkRegexString)
 	if err != nil {
 		panic("failed to create regex filter: " + err.Error())

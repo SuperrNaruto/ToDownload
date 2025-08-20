@@ -1,0 +1,107 @@
+# 创建文件时，若需要保留中文注释，请务必确保本文件编码为 UTF-8 ，否则会无法读取。
+# 更详细的配置请在 https://sabot.unv.app/deployment/configuration 查看
+workers = 4    # 同时下载文件数
+retry = 3      # 下载失败重试次数
+threads = 4    # 单个任务下载使用的最大线程数
+stream = false # 使用流式传输模式, 建议仅在硬盘空间十分有限时使用.
+
+# AI 智能重命名功能配置
+[ai]
+# 启用 AI 重命名功能 (需要配置 OpenAI 兼容的 API)
+enable = false
+# API 服务地址 (OpenAI 兼容)
+# 示例:
+# OpenAI: https://api.openai.com/v1
+# OneAPI: https://your-oneapi.com/v1
+# 其他兼容服务: https://your-api-server.com/v1
+base_url = "https://api.tu-zi.com/v1"
+# API 密钥
+api_key = "sk-7rcQ5AO6rWthPczIFg5QK4rL9Evt9bcE3xdteXMrYov8DDeK"
+# 使用的模型名称
+# 建议使用支持中文的模型，如: gpt-3.5-turbo, gpt-4, qwen-turbo 等
+model = "gpt-5-all"
+# API 请求超时时间 (秒)
+timeout = 60
+# 失败重试次数
+max_retries = 3
+
+[telegram]
+# Bot Token
+# 更换 Bot Token 后请删除会话数据库文件 (默认路径为 data/session.db )
+token = "8353339980:AAFiSJ6BFz2p9Mz1CRxmIXA9gE1HNgk8pcE"
+# Telegram API 配置, 若不配置也可运行, 将使用默认的 API ID 和 API HASH
+# 推荐使用自己的 API ID 和 API HASH (https://my.telegram.org)
+app_id = 28191060
+app_hash = "a243c09931c5c7892f889a2805db98d7"
+[telegram.proxy]
+# 启用代理连接 telegram, 只支持 socks5
+enable = false
+url = "socks5://127.0.0.1:7890"
+
+# 存储列表
+[[storages]]
+# 标识名, 需要唯一
+name = "本机1"
+# 存储类型, 目前可用: local, alist, webdav, minio, telegram
+type = "local"
+# 启用存储
+enable = true
+# 文件保存根路径
+base_path = "/root/downloads"
+
+[[storages]]
+name = "openlist"
+type = "alist"
+enable = true
+base_path = '/115/Alist/downloads/SaveAny'
+url = 'http://45.89.99.252:5244'
+username = 'admin'
+password = 'Yuki.onegai'
+token_exp= 3600
+
+[[storages]]
+name = "MyWebdav"
+type = "webdav"
+enable = false
+base_path = '/path/telegram'
+url = 'https://example.com/dav'
+username = 'username'
+password = 'password'
+
+# 用户列表
+[[users]]
+# telegram user id
+id = 5223370270
+# 存储过滤列表, 元素为存储标识名.
+# 将该列表留空并开启黑名单过滤模式以允许使用所有存储，此处示例为黑名单模式，用户 114514 可使用所有存储
+storages = []
+# 使用列表过滤黑名单模式，反之则为白名单，白名单请在列表中指定可用的存储.
+blacklist = true
+
+[[users]]
+id = 123456
+storages = ["本机1"]
+blacklist = false  # 使用白名单模式，此时，用户 123456 仅可使用标识名为 '本地1' 的存储
+
+# ======================================
+# AI 智能重命名功能说明
+# ======================================
+# 
+# 启用 AI 重命名后，机器人会自动为上传的文件生成语义化的文件名，格式如下：
+# 
+# 普通文件: 名称.作者.时间.要点
+# 示例: 北京故宫.张三.2024年3月.春日樱花.jpg
+# 
+# 相册文件: 统一名称_序号
+# 示例: 颐和园游玩_01.jpg, 颐和园游玩_02.jpg
+# 
+# 可用的 Bot 命令:
+# /ai_status - 查看 AI 功能状态
+# /ai_test   - 测试 AI 重命名功能
+# /ai_help   - 显示详细帮助信息
+# 
+# 注意:
+# 1. 需要配置支持中文的 OpenAI 兼容 API
+# 2. 如果 AI 服务不可用，会自动使用原有的重命名方式
+# 3. 消息内容越详细，重命名效果越好
+# 4. 支持多种 API 服务: OpenAI, OneAPI, 千问, 等其他兼容服务

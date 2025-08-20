@@ -24,8 +24,7 @@ Save Any Bot - 转存你的 Telegram 文件
 
 AI智能重命名:
 /ai_status - 查看AI功能状态
-/ai_test - 测试AI重命名功能
-/ai_help - AI功能详细帮助
+/ai_toggle - 开启/关闭AI重命名功能
 
 使用帮助: https://sabot.unv.app/usage/
 `

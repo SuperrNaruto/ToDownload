@@ -31,7 +31,7 @@ func Register(disp dispatcher.Dispatcher) {
 		return dispatcher.EndGroups
 	}))
 	disp.AddHandler(handlers.NewMessage(filters.Message.All, checkPermission))
-	disp.AddHandler(handlers.NewCommand("start", handleHelpCmd))
+	disp.AddHandler(handlers.NewCommand("start", handleStartCmd))
 	disp.AddHandler(handlers.NewCommand("help", handleHelpCmd))
 	disp.AddHandler(handlers.NewCommand("silent", handleSilentCmd))
 	disp.AddHandler(handlers.NewCommand("storage", handleStorageCmd))
@@ -56,6 +56,9 @@ func Register(disp dispatcher.Dispatcher) {
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("storage_delete"), handleStorageDeleteCallback))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("cancel"), handleCancelCallback))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("ai_"), handleAIToggleCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("help_"), handleHelpCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("onboarding_"), handleOnboardingCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("set_default_storage"), handleOnboardingCallback))
 	linkRegexFilter, err := filters.Message.Regex(re.TgMessageLinkRegexString)
 	if err != nil {
 		panic("failed to create regex filter: " + err.Error())

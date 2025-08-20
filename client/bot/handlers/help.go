@@ -93,41 +93,67 @@ func handleHelpCallback(ctx *ext.Context, update *ext.Update) error {
 	data := string(callback.Data)
 	
 	var helpText string
-	var backButton bool = true
+	var markup *tg.ReplyInlineMarkup
 	
 	switch data {
 	case "help_save":
 		helpText = buildSaveHelpText()
+		markup = buildHelpBackMarkup()
 	case "help_storage":
 		helpText = buildStorageHelpText()
+		markup = buildHelpBackMarkup()
 	case "help_dir":
 		helpText = buildDirHelpText()
+		markup = buildHelpBackMarkup()
 	case "help_rule":
 		helpText = buildRuleHelpText()
+		markup = buildHelpBackMarkup()
 	case "help_ai":
 		helpText = buildAIHelpText()
+		markup = buildHelpBackMarkup()
 	case "help_watch":
 		helpText = buildWatchHelpText()
+		markup = buildHelpBackMarkup()
 	case "help_advanced":
 		helpText = buildAdvancedHelpText()
+		markup = buildHelpBackMarkup()
 	case "help_faq":
 		helpText = buildFAQHelpText()
+		markup = buildHelpBackMarkup()
 	case "help_back":
-		return handleHelpCmd(ctx, update)
+		// 返回主菜单
+		shortHash := consts.GitCommit
+		if len(shortHash) > 7 {
+			shortHash = shortHash[:7]
+		}
+		
+		helpText = fmt.Sprintf(`🤖 **Save Any Bot**
+📁 转存你的 Telegram 文件到各种存储
+
+📊 **版本信息**
+• 版本: %s
+• 提交: %s
+
+💡 选择下方功能分类获取详细帮助：`, consts.Version, shortHash)
+		markup = buildHelpMainMarkup()
 	default:
 		return dispatcher.EndGroups
 	}
 	
-	markup := buildHelpBackMarkup()
-	if !backButton {
-		markup = nil
-	}
-	
-	ctx.EditMessage(callback.Peer.(*tg.PeerUser).UserID, &tg.MessagesEditMessageRequest{
+	// 使用EditMessage编辑消息
+	_, err := ctx.EditMessage(callback.Peer.(*tg.PeerUser).UserID, &tg.MessagesEditMessageRequest{
 		ID:          callback.MsgID,
 		Message:     helpText,
 		ReplyMarkup: markup,
 	})
+	
+	if err != nil {
+		// 如果编辑失败，尝试发送新消息
+		ctx.SendMessage(callback.Peer.(*tg.PeerUser).UserID, &tg.MessagesSendMessageRequest{
+			Message:     helpText,
+			ReplyMarkup: markup,
+		})
+	}
 	
 	return dispatcher.EndGroups
 }

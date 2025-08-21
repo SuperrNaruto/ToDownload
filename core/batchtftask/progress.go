@@ -9,10 +9,8 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
-	"github.com/duke-git/lancet/v2/slice"
-	"github.com/gotd/td/telegram/message/entity"
-	"github.com/gotd/td/telegram/message/styling"
 	"github.com/gotd/td/tg"
+	"github.com/krau/SaveAny-Bot/client/bot/handlers/utils/msgelem"
 	"github.com/krau/SaveAny-Bot/common/utils/dlutil"
 	"github.com/krau/SaveAny-Bot/common/utils/tgutil"
 )
@@ -34,33 +32,31 @@ func (p *Progress) OnStart(ctx context.Context, info TaskInfo) {
 	p.start = time.Now()
 	p.lastUpdatePercent.Store(0)
 	log.FromContext(ctx).Debugf("Batch task progress tracking started for message %d in chat %d", p.MessageID, p.ChatID)
-	entityBuilder := entity.Builder{}
-	var entities []tg.MessageEntityClass
-	if err := styling.Perform(&entityBuilder,
-		styling.Plain("开始执行批量下载任务\n总大小: "),
-		styling.Code(fmt.Sprintf("%.2f MB (%d个文件)", float64(info.TotalSize())/(1024*1024), info.Count())),
-	); err != nil {
-		log.FromContext(ctx).Errorf("Failed to build entities: %s", err)
-		return
-	}
-	text, entities := entityBuilder.Complete()
-	req := &tg.MessagesEditMessageRequest{
-		ID: p.MessageID,
-	}
-	req.SetMessage(text)
-	req.SetEntities(entities)
-	req.SetReplyMarkup(&tg.ReplyInlineMarkup{
+	
+	// 使用新的模板系统，简化初始状态显示
+	template := msgelem.NewInfoTemplate("🚀 开始批量下载", "")
+	template.AddItem("📦", "文件数量", strconv.Itoa(info.Count()), msgelem.ItemTypeText)
+	template.AddItem("📏", "总大小", msgelem.FormatSize(info.TotalSize()), msgelem.ItemTypeText)
+	// 移除多余的"状态"显示，直接进入下载
+	
+	text, entities := template.BuildFormattedMessage()
+	
+	markup := &tg.ReplyInlineMarkup{
 		Rows: []tg.KeyboardButtonRow{
 			{
 				Buttons: []tg.KeyboardButtonClass{
 					tgutil.BuildCancelButton(info.TaskID()),
 				},
 			},
-		}},
-	)
+		},
+	}
+	
 	ext := tgutil.ExtFromContext(ctx)
 	if ext != nil {
-		ext.EditMessage(p.ChatID, req)
+		peer := &tg.InputPeerUser{UserID: p.ChatID}
+		if err := msgelem.EditWithFormattedText(ext, peer, p.MessageID, text, entities, markup); err != nil {
+			log.Warn("Failed to edit message for batch task start", "error", err, "task_id", info.TaskID())
+		}
 		return
 	}
 }
@@ -75,48 +71,47 @@ func (p *Progress) OnProgress(ctx context.Context, info TaskInfo) {
 	}
 	p.lastUpdatePercent.Store(int32(percent))
 	log.FromContext(ctx).Debugf("Progress update: %s, %d/%d", info.TaskID(), info.Downloaded(), info.TotalSize())
-	entityBuilder := entity.Builder{}
-	var entities []tg.MessageEntityClass
-	if err := styling.Perform(&entityBuilder,
-		styling.Plain("正在处理批量下载任务\n总大小: "),
-		styling.Code(fmt.Sprintf("%.2f MB (%d个文件)", float64(info.TotalSize())/(1024*1024), info.Count())),
-		styling.Plain("\n正在处理:\n"),
-		func() styling.StyledTextOption {
-			var lines []string
-			for _, elem := range info.Processing() {
-				lines = append(lines, fmt.Sprintf("  - %s (%.2f MB)", elem.FileName(), float64(elem.FileSize())/(1024*1024)))
-			}
-			if len(lines) == 0 {
-				lines = append(lines, "  - 无")
-			}
-			return styling.Plain(slice.Join(lines, "\n"))
-		}(),
-		styling.Plain("\n平均速度: "),
-		styling.Bold(fmt.Sprintf("%.2f MB/s", dlutil.GetSpeed(info.Downloaded(), p.start)/(1024*1024))),
-		styling.Plain("\n当前进度: "),
-		styling.Bold(fmt.Sprintf("%.2f%%", float64(info.Downloaded())/float64(info.TotalSize())*100)),
-	); err != nil {
-		log.FromContext(ctx).Errorf("Failed to build entities: %s", err)
-		return
+	
+	// 使用新的模板系统，简化进度显示
+	template := msgelem.NewProcessingTemplate("批量下载中", "")
+	
+	// 基本信息
+	template.AddItem("📦", "文件数量", strconv.Itoa(info.Count()), msgelem.ItemTypeText)
+	
+	// 进度信息
+	template.AddProgressBar("📊", "总体进度", info.Downloaded(), info.TotalSize(), 12)
+	
+	// 简化的当前状态信息
+	processingCount := len(info.Processing())
+	if processingCount > 0 {
+		statusText := fmt.Sprintf("%d 个文件", processingCount)
+		template.AddItem("🔄", "正在处理", statusText, msgelem.ItemTypeText)
 	}
-	text, entities := entityBuilder.Complete()
-	req := &tg.MessagesEditMessageRequest{
-		ID: p.MessageID,
+	
+	// 速度信息
+	speed := dlutil.GetSpeed(info.Downloaded(), p.start)
+	if speed > 0 {
+		template.AddItem("🚀", "平均速度", msgelem.FormatSize(int64(speed))+"/s", msgelem.ItemTypeText)
 	}
-	req.SetMessage(text)
-	req.SetEntities(entities)
-	req.SetReplyMarkup(&tg.ReplyInlineMarkup{
+	
+	text, entities := template.BuildFormattedMessage()
+	
+	markup := &tg.ReplyInlineMarkup{
 		Rows: []tg.KeyboardButtonRow{
 			{
 				Buttons: []tg.KeyboardButtonClass{
 					tgutil.BuildCancelButton(info.TaskID()),
 				},
 			},
-		}},
-	)
+		},
+	}
+	
 	ext := tgutil.ExtFromContext(ctx)
 	if ext != nil {
-		ext.EditMessage(p.ChatID, req)
+		peer := &tg.InputPeerUser{UserID: p.ChatID}
+		if err := msgelem.EditWithFormattedText(ext, peer, p.MessageID, text, entities, markup); err != nil {
+			log.Warn("Failed to edit message for batch task progress", "error", err, "task_id", info.TaskID())
+		}
 		return
 	}
 }
@@ -127,44 +122,35 @@ func (p *Progress) OnDone(ctx context.Context, info TaskInfo, err error) {
 	} else {
 		log.FromContext(ctx).Debugf("Batch task %s completed successfully", info.TaskID())
 	}
-	entityBuilder := entity.Builder{}
-	var stylingErr error
 
+	var template *msgelem.MessageTemplate
+	
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			stylingErr = styling.Perform(&entityBuilder,
-				styling.Plain("任务已取消"),
-			)
+			template = msgelem.NewErrorTemplate("批量任务已取消", "")
+			template.AddItem("📦", "文件数量", strconv.Itoa(info.Count()), msgelem.ItemTypeText)
 		} else {
-			stylingErr = styling.Perform(&entityBuilder,
-				styling.Plain("处理失败, 错误:\n "),
-				styling.Code(err.Error()),
-			)
+			template = msgelem.NewErrorTemplate("批量下载失败", "")
+			template.AddItem("📦", "文件数量", strconv.Itoa(info.Count()), msgelem.ItemTypeText)
+			template.AddItem("❗", "错误信息", err.Error(), msgelem.ItemTypeText)
 		}
 	} else {
-		stylingErr = styling.Perform(&entityBuilder,
-			styling.Plain("处理完成\n文件数: "),
-			styling.Code(strconv.Itoa(info.Count())),
-			styling.Plain("\n总大小: "),
-			styling.Code(fmt.Sprintf("%.2f MB", float64(info.TotalSize())/(1024*1024))),
-		)
+		template = msgelem.NewSuccessTemplate("批量下载完成", "")
+		template.AddItem("📦", "文件数量", strconv.Itoa(info.Count()), msgelem.ItemTypeText)
+		template.AddItem("📏", "总大小", msgelem.FormatSize(info.TotalSize()), msgelem.ItemTypeText)
+		
+		elapsed := time.Since(p.start)
+		template.AddItem("⌚", "总用时", msgelem.FormatDuration(elapsed), msgelem.ItemTypeText)
 	}
 
-	if stylingErr != nil {
-		log.FromContext(ctx).Errorf("Failed to build entities: %s", stylingErr)
-		return
-	}
-
-	text, entities := entityBuilder.Complete()
-	req := &tg.MessagesEditMessageRequest{
-		ID: p.MessageID,
-	}
-	req.SetMessage(text)
-	req.SetEntities(entities)
+	text, entities := template.BuildFormattedMessage()
 
 	ext := tgutil.ExtFromContext(ctx)
 	if ext != nil {
-		ext.EditMessage(p.ChatID, req)
+		peer := &tg.InputPeerUser{UserID: p.ChatID}
+		if err := msgelem.EditWithFormattedText(ext, peer, p.MessageID, text, entities, nil); err != nil {
+			log.Warn("Failed to edit message for batch task completion", "error", err, "task_id", info.TaskID())
+		}
 	}
 }
 

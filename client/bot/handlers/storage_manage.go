@@ -21,9 +21,9 @@ import (
 // handleStorageListCmd 处理 /storage_list 命令
 func handleStorageListCmd(ctx *ext.Context, update *ext.Update) error {
 	chatID := update.GetUserChat().GetID()
-	
+
 	template := msgelem.NewInfoTemplate("存储配置管理", "查看和管理你的所有存储配置")
-	
+
 	// 获取系统配置的存储
 	systemStorages := storage.GetUserStorages(ctx, chatID)
 	if len(systemStorages) > 0 {
@@ -37,12 +37,12 @@ func handleStorageListCmd(ctx *ext.Context, update *ext.Update) error {
 			template.AddItem("  📋", "更多", fmt.Sprintf("还有 %d 个系统存储", len(systemStorages)-3), msgelem.ItemTypeText)
 		}
 	}
-	
+
 	// 获取用户自定义存储配置
 	userStorages, err := database.GetUserStoragesByChatID(ctx, chatID)
 	if err != nil {
 		errorTemplate := msgelem.NewErrorTemplate("获取存储列表失败", err.Error())
-		
+
 		// 使用格式化消息发送
 		text, entities := errorTemplate.BuildFormattedMessage()
 		err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, nil)
@@ -62,7 +62,7 @@ func handleStorageListCmd(ctx *ext.Context, update *ext.Update) error {
 				statusIcon = "🔴"
 				statusText = "禁用"
 			}
-			
+
 			template.AddItem("  "+statusIcon, userStorage.Name, fmt.Sprintf("%s (%s)", userStorage.Type, statusText), msgelem.ItemTypeText)
 		}
 	} else {
@@ -72,7 +72,7 @@ func handleStorageListCmd(ctx *ext.Context, update *ext.Update) error {
 			template.AddAction("点击下方按钮添加自定义存储配置")
 		}
 	}
-	
+
 	// 总是显示操作按钮
 	markup, err := msgelem.BuildStorageManageMarkup(ctx, userStorages)
 	if err != nil {
@@ -84,7 +84,7 @@ func handleStorageListCmd(ctx *ext.Context, update *ext.Update) error {
 		}
 		return nil
 	}
-	
+
 	// 使用格式化消息发送
 	text, entities := template.BuildFormattedMessage()
 	err = msgelem.ReplyWithFormattedText(ctx, update, text, entities, &ext.ReplyOpts{
@@ -96,7 +96,7 @@ func handleStorageListCmd(ctx *ext.Context, update *ext.Update) error {
 			Markup: markup,
 		})
 	}
-	
+
 	return dispatcher.EndGroups
 }
 
@@ -154,7 +154,7 @@ func startStorageConfigWizard(ctx *ext.Context, update *ext.Update, storageName,
 
 	default:
 		errorTemplate := msgelem.NewErrorTemplate("不支持的存储类型", "请选择支持的存储类型")
-		
+
 		// 使用格式化消息发送
 		text, entities := errorTemplate.BuildFormattedMessage()
 		err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, nil)
@@ -167,10 +167,10 @@ func startStorageConfigWizard(ctx *ext.Context, update *ext.Update, storageName,
 
 	// 存储配置向导状态
 	wizardData := tcbdata.StorageConfigWizard{
-		ChatID:        update.GetUserChat().GetID(),
-		StorageName:   storageName,
-		StorageType:   storageType,
-		Description:   description,
+		ChatID:         update.GetUserChat().GetID(),
+		StorageName:    storageName,
+		StorageType:    storageType,
+		Description:    description,
 		ExpectedFields: expectedFields,
 	}
 
@@ -205,7 +205,7 @@ func startStorageConfigWizard(ctx *ext.Context, update *ext.Update, storageName,
 	}
 
 	template.AddAction("发送 /cancel 取消配置")
-	
+
 	// 检查是否是回调查询，如果是则编辑消息，否则回复
 	if update.CallbackQuery != nil {
 		// 使用格式化消息编辑
@@ -253,7 +253,7 @@ func handleStorageConfigResponse(ctx *ext.Context, update *ext.Update) error {
 		nameInputKey := fmt.Sprintf("storage_name_input_%d", chatID)
 		cache.Del(nameInputKey)
 		successTemplate := msgelem.NewSuccessTemplate("存储配置已取消", "配置过程已被用户取消")
-		
+
 		// 使用格式化消息发送
 		text, entities := successTemplate.BuildFormattedMessage()
 		err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, nil)
@@ -268,15 +268,15 @@ func handleStorageConfigResponse(ctx *ext.Context, update *ext.Update) error {
 	nameInputKey := fmt.Sprintf("storage_name_input_%d", chatID)
 	if storageType, ok := cache.Get[string](nameInputKey); ok {
 		log.Printf("处理存储名称输入: 用户=%d, 存储类型=%s, 输入内容=%s", chatID, storageType, text)
-		
+
 		// 用户正在输入存储名称
 		storageName := strings.TrimSpace(text)
-		
+
 		// 验证存储名称
 		if storageName == "" {
 			log.Printf("存储名称为空: 用户=%d", chatID)
 			errorTemplate := msgelem.NewErrorTemplate("输入无效", "存储名称不能为空，请重新输入")
-			
+
 			// 使用格式化消息发送
 			text, entities := errorTemplate.BuildFormattedMessage()
 			err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, nil)
@@ -286,13 +286,13 @@ func handleStorageConfigResponse(ctx *ext.Context, update *ext.Update) error {
 			}
 			return dispatcher.EndGroups
 		}
-		
+
 		// 检查存储名称是否已存在
 		user, err := database.GetUserByChatID(ctx, chatID)
 		if err != nil {
 			log.Printf("获取用户信息失败: 用户=%d, 错误=%v", chatID, err)
 			errorTemplate := msgelem.NewErrorTemplate("获取用户信息失败", err.Error())
-			
+
 			// 使用格式化消息发送
 			text, entities := errorTemplate.BuildFormattedMessage()
 			err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, nil)
@@ -302,12 +302,12 @@ func handleStorageConfigResponse(ctx *ext.Context, update *ext.Update) error {
 			}
 			return dispatcher.EndGroups
 		}
-		
+
 		existingStorage, err := database.GetUserStorageByUserIDAndName(ctx, user.ID, storageName)
 		if err != nil && err.Error() != "record not found" {
 			log.Printf("检查存储名称失败: 用户=%d, 存储名称=%s, 错误=%v", chatID, storageName, err)
 			errorTemplate := msgelem.NewErrorTemplate("检查存储名称失败", err.Error())
-			
+
 			// 使用格式化消息发送
 			text, entities := errorTemplate.BuildFormattedMessage()
 			err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, nil)
@@ -317,11 +317,11 @@ func handleStorageConfigResponse(ctx *ext.Context, update *ext.Update) error {
 			}
 			return dispatcher.EndGroups
 		}
-		
+
 		if existingStorage != nil {
 			log.Printf("存储名称已存在: 用户=%d, 存储名称=%s", chatID, storageName)
 			errorTemplate := msgelem.NewErrorTemplate("存储名称冲突", fmt.Sprintf("存储名称 '%s' 已存在，请选择其他名称", storageName))
-			
+
 			// 使用格式化消息发送
 			text, entities := errorTemplate.BuildFormattedMessage()
 			err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, nil)
@@ -331,11 +331,11 @@ func handleStorageConfigResponse(ctx *ext.Context, update *ext.Update) error {
 			}
 			return dispatcher.EndGroups
 		}
-		
+
 		// 清理名称输入缓存
 		cache.Del(nameInputKey)
 		log.Printf("开始配置向导: 用户=%d, 存储名称=%s, 存储类型=%s", chatID, storageName, storageType)
-		
+
 		// 开始配置向导
 		return startStorageConfigWizard(ctx, update, storageName, storageType, "")
 	}
@@ -347,17 +347,17 @@ func handleStorageConfigResponse(ctx *ext.Context, update *ext.Update) error {
 		log.Printf("未找到活跃的存储配置向导: 用户=%d, 消息内容=%s", chatID, text)
 		return nil // 继续传递给其他处理器
 	}
-	
+
 	// 添加调试信息
 	log.Printf("找到活跃向导: 用户=%d, 存储名称=%s, 类型=%s", chatID, wizardData.StorageName, wizardData.StorageType)
 
 	// 使用新的验证系统解析配置数据
 	log.Printf("开始解析配置: 类型=%s, 内容=%s", wizardData.StorageType, text)
-	
+
 	validator := configval.NewConfigValidator()
 	var validationResult *configval.ValidationResult
 	var configData map[string]string
-	
+
 	switch wizardData.StorageType {
 	case "alist":
 		validationResult, configData = validator.ValidateAlistConfig(text)
@@ -371,7 +371,7 @@ func handleStorageConfigResponse(ctx *ext.Context, update *ext.Update) error {
 		validationResult, configData = validator.ValidateTelegramConfig(text)
 	default:
 		errorTemplate := msgelem.NewErrorTemplate("不支持的存储类型", wizardData.StorageType)
-		
+
 		// 使用格式化消息发送
 		text, entities := errorTemplate.BuildFormattedMessage()
 		err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, nil)
@@ -380,22 +380,22 @@ func handleStorageConfigResponse(ctx *ext.Context, update *ext.Update) error {
 		}
 		return dispatcher.EndGroups
 	}
-	
+
 	if !validationResult.IsValid {
 		log.Printf("配置验证失败: %s", validationResult.Error)
 		errorTemplate := msgelem.NewErrorTemplate("配置验证失败", validationResult.Error)
 		if validationResult.Suggestion != "" {
 			errorTemplate.AddAction(validationResult.Suggestion)
 		}
-		
+
 		// 提供智能建议
 		suggestions := validator.GetSmartSuggestions(wizardData.StorageType, text)
 		for _, suggestion := range suggestions {
 			errorTemplate.AddAction(suggestion)
 		}
-		
+
 		errorTemplate.AddAction("发送 /cancel 取消配置")
-		
+
 		// 使用格式化消息发送
 		text, entities := errorTemplate.BuildFormattedMessage()
 		err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, nil)
@@ -404,7 +404,7 @@ func handleStorageConfigResponse(ctx *ext.Context, update *ext.Update) error {
 		}
 		return dispatcher.EndGroups
 	}
-	
+
 	log.Printf("配置验证成功: %+v", configData)
 
 	// 转换为JSON字符串
@@ -417,7 +417,7 @@ func handleStorageConfigResponse(ctx *ext.Context, update *ext.Update) error {
 	// 验证配置有效性
 	if err := database.ValidateStorageConfig(wizardData.StorageType, string(configJSON)); err != nil {
 		errorTemplate := msgelem.NewErrorTemplate("配置验证失败", err.Error())
-		
+
 		// 使用格式化消息发送
 		text, entities := errorTemplate.BuildFormattedMessage()
 		err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, nil)
@@ -477,7 +477,7 @@ func handleStorageConfigResponse(ctx *ext.Context, update *ext.Update) error {
 
 		if err := database.CreateUserStorage(ctx, userStorage); err != nil {
 			errorTemplate := msgelem.NewErrorTemplate("创建存储配置失败", err.Error())
-			
+
 			// 使用格式化消息发送
 			text, entities := errorTemplate.BuildFormattedMessage()
 			err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, nil)
@@ -497,7 +497,7 @@ func handleStorageConfigResponse(ctx *ext.Context, update *ext.Update) error {
 		}
 		successTemplate.AddAction("使用 /storage 设为默认存储")
 		successTemplate.AddAction("使用 /storage_list 查看所有存储配置")
-		
+
 		// 使用格式化消息发送
 		text, entities := successTemplate.BuildFormattedMessage()
 		err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, nil)
@@ -515,18 +515,18 @@ func handleStorageConfigResponse(ctx *ext.Context, update *ext.Update) error {
 // parseStorageConfig 解析存储配置
 func parseStorageConfig(storageType, input string, expectedFields []string) (map[string]interface{}, error) {
 	config := make(map[string]interface{})
-	
+
 	switch storageType {
 	case "alist":
 		parts := strings.Split(strings.TrimSpace(input), ",")
 		if len(parts) < 3 {
 			return nil, fmt.Errorf("至少需要3个参数：URL,用户名,密码[,base_path]")
 		}
-		
+
 		config["url"] = strings.TrimSpace(parts[0])
 		config["username"] = strings.TrimSpace(parts[1])
 		config["password"] = strings.TrimSpace(parts[2])
-		
+
 		if len(parts) > 3 && strings.TrimSpace(parts[3]) != "" {
 			config["base_path"] = strings.TrimSpace(parts[3])
 		} else {
@@ -538,11 +538,11 @@ func parseStorageConfig(storageType, input string, expectedFields []string) (map
 		if len(parts) < 3 {
 			return nil, fmt.Errorf("至少需要3个参数：URL,用户名,密码[,路径]")
 		}
-		
+
 		config["url"] = strings.TrimSpace(parts[0])
 		config["username"] = strings.TrimSpace(parts[1])
 		config["password"] = strings.TrimSpace(parts[2])
-		
+
 		if len(parts) > 3 && strings.TrimSpace(parts[3]) != "" {
 			config["path"] = strings.TrimSpace(parts[3])
 		} else {
@@ -554,12 +554,12 @@ func parseStorageConfig(storageType, input string, expectedFields []string) (map
 		if len(parts) < 4 {
 			return nil, fmt.Errorf("至少需要4个参数：endpoint,access_key,secret_key,bucket[,region]")
 		}
-		
+
 		config["endpoint"] = strings.TrimSpace(parts[0])
 		config["access_key"] = strings.TrimSpace(parts[1])
 		config["secret_key"] = strings.TrimSpace(parts[2])
 		config["bucket"] = strings.TrimSpace(parts[3])
-		
+
 		if len(parts) > 4 && strings.TrimSpace(parts[4]) != "" {
 			config["region"] = strings.TrimSpace(parts[4])
 		} else {
@@ -578,7 +578,7 @@ func parseStorageConfig(storageType, input string, expectedFields []string) (map
 		if chatID == "" {
 			return nil, fmt.Errorf("chat_id不能为空")
 		}
-		
+
 		// 验证chat_id格式（应该是数字，通常是负数）
 		if _, err := strconv.ParseInt(chatID, 10, 64); err != nil {
 			return nil, fmt.Errorf("chat_id必须是有效的整数")
@@ -608,8 +608,6 @@ func clearStorageWizardCache(chatID int64) {
 	key := fmt.Sprintf("storage_wizard_%d", chatID)
 	cache.Del(key)
 }
-
-
 
 // handleDeleteStorageConfirmCallback 处理删除存储确认回调
 func handleDeleteStorageConfirmCallback(ctx *ext.Context, update *ext.Update) error {
@@ -759,10 +757,10 @@ func handleStorageInfoCallback(ctx *ext.Context, update *ext.Update) error {
 
 	// 使用模板系统构建存储信息
 	template := msgelem.NewInfoTemplate("存储详情", storage.Name)
-	
+
 	// 添加基本信息
 	template.AddItem("📦", "类型", strings.ToUpper(storage.Type), msgelem.ItemTypeText)
-	
+
 	status := "启用"
 	statusIcon := "🟢"
 	if !storage.Enable {
@@ -770,11 +768,11 @@ func handleStorageInfoCallback(ctx *ext.Context, update *ext.Update) error {
 		statusIcon = "🔴"
 	}
 	template.AddItem(statusIcon, "状态", status, msgelem.ItemTypeStatus)
-	
+
 	if storage.Description != "" {
 		template.AddItem("📝", "描述", storage.Description, msgelem.ItemTypeText)
 	}
-	
+
 	template.AddItem("🕐", "创建时间", storage.CreatedAt.Format("2006-01-02 15:04:05"), msgelem.ItemTypeText)
 	template.AddItem("🔄", "更新时间", storage.UpdatedAt.Format("2006-01-02 15:04:05"), msgelem.ItemTypeText)
 
@@ -917,10 +915,10 @@ func handleStorageAddStartCallback(ctx *ext.Context, update *ext.Update) error {
 // handleStorageBackToListCallback 处理返回存储列表回调
 func handleStorageBackToListCallback(ctx *ext.Context, update *ext.Update) error {
 	chatID := update.GetUserChat().GetID()
-	
+
 	var message strings.Builder
 	message.WriteString("📚 存储配置列表:\n\n")
-	
+
 	// 获取系统配置的存储
 	systemStorages := storage.GetUserStorages(ctx, chatID)
 	if len(systemStorages) > 0 {
@@ -930,7 +928,7 @@ func handleStorageBackToListCallback(ctx *ext.Context, update *ext.Update) error
 			message.WriteString("   📝 系统配置文件定义\n\n")
 		}
 	}
-	
+
 	// 获取用户自定义存储配置
 	userStorages, err := database.GetUserStoragesByChatID(ctx, chatID)
 	if err != nil {
@@ -950,14 +948,14 @@ func handleStorageBackToListCallback(ctx *ext.Context, update *ext.Update) error
 			if !userStorage.Enable {
 				status = "🔴"
 			}
-			
+
 			message.WriteString(fmt.Sprintf("%s **%s** (%s)\n", status, userStorage.Name, userStorage.Type))
 			if userStorage.Description != "" {
 				message.WriteString(fmt.Sprintf("   📝 %s\n", userStorage.Description))
 			}
 			message.WriteString(fmt.Sprintf("   🕐 创建时间: %s\n\n", userStorage.CreatedAt.Format("2006-01-02 15:04:05")))
 		}
-		
+
 		// 添加操作按钮（仅针对用户存储）
 		markup, _ = msgelem.BuildStorageManageMarkup(ctx, userStorages)
 	} else {
@@ -978,7 +976,7 @@ func handleStorageBackToListCallback(ctx *ext.Context, update *ext.Update) error
 		QueryID: update.CallbackQuery.GetQueryID(),
 		Message: "列表已更新",
 	})
-	
+
 	return dispatcher.EndGroups
 }
 
@@ -1004,7 +1002,7 @@ func handleStorageTypeCallback(ctx *ext.Context, update *ext.Update) error {
 
 示例: 我的%s, %s1, 备份%s
 
-💡 请直接回复此消息，输入存储名称`, 
+💡 请直接回复此消息，输入存储名称`,
 		strings.ToUpper(storageType), storageType, storageType, storageType)
 
 	// 保存存储类型到缓存，等待用户输入名称
@@ -1035,7 +1033,6 @@ func handleStorageTypeCallback(ctx *ext.Context, update *ext.Update) error {
 
 	return dispatcher.EndGroups
 }
-
 
 // handleStorageEditCallback 处理编辑配置回调
 func handleStorageTestCallback(ctx *ext.Context, update *ext.Update) error {
@@ -1088,7 +1085,7 @@ func handleStorageTestCallback(ctx *ext.Context, update *ext.Update) error {
 
 	// 测试存储连接
 	err = storage.Manager.TestUserStorageConnection(ctx, userID, userStorage.Name)
-	
+
 	var message string
 	if err != nil {
 		message = fmt.Sprintf("❌ 存储 '%s' 连接测试失败: %s", userStorage.Name, err.Error())

@@ -30,7 +30,3 @@ func (w *WebdavStorageConfig) Validate() error {
 func (w *WebdavStorageConfig) GetType() storenum.StorageType {
 	return storenum.Webdav
 }
-
-func (w *WebdavStorageConfig) GetName() string {
-	return w.Name
-}

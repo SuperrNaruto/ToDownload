@@ -32,7 +32,3 @@ func (a *AlistStorageConfig) Validate() error {
 func (a *AlistStorageConfig) GetType() storenum.StorageType {
 	return storenum.Alist
 }
-
-func (a *AlistStorageConfig) GetName() string {
-	return a.Name
-}

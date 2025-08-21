@@ -10,3 +10,12 @@ func AlertCallbackAnswer(queryID int64, text string) *tg.MessagesSetBotCallbackA
 		CacheTime: 5,
 	}
 }
+
+func CallbackAnswer(queryID int64, text string) *tg.MessagesSetBotCallbackAnswerRequest {
+	return &tg.MessagesSetBotCallbackAnswerRequest{
+		QueryID:   queryID,
+		Alert:     false,
+		Message:   text,
+		CacheTime: 5,
+	}
+}

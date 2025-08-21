@@ -37,18 +37,18 @@ func InitAIRenameService(ctx context.Context, cfg *config.Config) error {
 
 	// Create rename service
 	renameService := ai.NewRenameService(client, logger, true)
-	
+
 	// Set fallback function that uses the original naming logic
 	renameService.SetFallback(fallbackFileNaming)
-	
+
 	globalRenameService = renameService
 	serviceInitialized = true
-	
-	logger.Info("AI rename service initialized", 
+
+	logger.Info("AI rename service initialized",
 		"base_url", cfg.AI.BaseURL,
 		"model", cfg.AI.Model,
 		"timeout", cfg.AI.GetTimeout())
-	
+
 	return nil
 }
 
@@ -81,7 +81,7 @@ func fallbackFileNaming(originalFilename, messageContent string, isAlbum bool) s
 		// Last resort for albums: timestamp-based name
 		return "album_" + time.Now().Format("20060102_150405")
 	}
-	
+
 	// For regular files, prefer original filename without extension
 	if originalFilename != "" {
 		// Remove extension from original filename
@@ -90,7 +90,7 @@ func fallbackFileNaming(originalFilename, messageContent string, isAlbum bool) s
 		}
 		return originalFilename
 	}
-	
+
 	// If no original filename, use message content
 	if messageContent != "" {
 		// Take first 50 characters of message content and sanitize
@@ -100,7 +100,7 @@ func fallbackFileNaming(originalFilename, messageContent string, isAlbum bool) s
 		}
 		return ai.SanitizeFilename(name)
 	}
-	
+
 	// Last resort: timestamp-based name
 	return "file_" + time.Now().Format("20060102_150405")
 }

@@ -21,7 +21,3 @@ func (l *LocalStorageConfig) Validate() error {
 func (l *LocalStorageConfig) GetType() storenum.StorageType {
 	return storenum.Local
 }
-
-func (l *LocalStorageConfig) GetName() string {
-	return l.Name
-}

@@ -9,12 +9,12 @@ import (
 
 // AIConfig represents the AI service configuration
 type AIConfig struct {
-	Enable    bool   `toml:"enable" mapstructure:"enable" json:"enable"`
-	BaseURL   string `toml:"base_url" mapstructure:"base_url" json:"base_url"`
-	APIKey    string `toml:"api_key" mapstructure:"api_key" json:"api_key"`
-	Model     string `toml:"model" mapstructure:"model" json:"model"`
-	Timeout   int    `toml:"timeout" mapstructure:"timeout" json:"timeout"` // timeout in seconds
-	MaxRetries int   `toml:"max_retries" mapstructure:"max_retries" json:"max_retries"`
+	Enable     bool   `toml:"enable" mapstructure:"enable" json:"enable"`
+	BaseURL    string `toml:"base_url" mapstructure:"base_url" json:"base_url"`
+	APIKey     string `toml:"api_key" mapstructure:"api_key" json:"api_key"`
+	Model      string `toml:"model" mapstructure:"model" json:"model"`
+	Timeout    int    `toml:"timeout" mapstructure:"timeout" json:"timeout"` // timeout in seconds
+	MaxRetries int    `toml:"max_retries" mapstructure:"max_retries" json:"max_retries"`
 }
 
 // GetTimeout returns the timeout as time.Duration
@@ -49,7 +49,7 @@ func (a *AIConfig) Validate() error {
 	if err != nil {
 		return fmt.Errorf("ai.base_url is not a valid URL: %w", err)
 	}
-	
+
 	// Check if URL has scheme (http/https)
 	if parsedURL.Scheme == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
 		return fmt.Errorf("ai.base_url must be a valid HTTP/HTTPS URL")

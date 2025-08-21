@@ -105,7 +105,7 @@ func (s *RenameService) renameWithAI(ctx context.Context, req RenameRequest) (st
 		cleanResult = strings.ReplaceAll(cleanResult, "\\", "_")
 		s.logger.Info("Cleaned path separators from AI result", "cleaned", cleanResult)
 	}
-	
+
 	// 最终安全验证
 	if cleanResult == "" || cleanResult == "." || cleanResult == ".." {
 		s.logger.Warn("AI generated unsafe filename", "result", cleanResult)
@@ -121,7 +121,7 @@ func (s *RenameService) useFallback(originalFilename, messageContent string, isA
 	if s.fallback != nil {
 		return s.fallback(originalFilename, messageContent, isAlbum)
 	}
-	
+
 	// Default fallback: return original filename without extension or use message-based name
 	if originalFilename != "" {
 		// Remove extension from original filename
@@ -130,7 +130,7 @@ func (s *RenameService) useFallback(originalFilename, messageContent string, isA
 		}
 		return originalFilename
 	}
-	
+
 	// If no original filename, generate a simple name from message
 	if messageContent != "" {
 		// Take first 50 characters of message content and sanitize
@@ -140,7 +140,7 @@ func (s *RenameService) useFallback(originalFilename, messageContent string, isA
 		}
 		return SanitizeFilename(name)
 	}
-	
+
 	// Last resort: timestamp-based name
 	return fmt.Sprintf("file_%d", time.Now().Unix())
 }
@@ -148,18 +148,18 @@ func (s *RenameService) useFallback(originalFilename, messageContent string, isA
 // GenerateAlbumFilenames generates individual filenames for album files
 func (s *RenameService) GenerateAlbumFilenames(baseFilename string, count int) []string {
 	filenames := make([]string, count)
-	
+
 	// Calculate padding for sequence numbers
 	padding := len(fmt.Sprintf("%d", count))
 	if padding < 2 {
 		padding = 2
 	}
-	
+
 	for i := 0; i < count; i++ {
 		sequence := fmt.Sprintf("%0*d", padding, i+1)
 		filenames[i] = fmt.Sprintf("%s_%s", baseFilename, sequence)
 	}
-	
+
 	return filenames
 }
 
@@ -167,19 +167,19 @@ func (s *RenameService) GenerateAlbumFilenames(baseFilename string, count int) [
 func (s *RenameService) BatchRenameFiles(ctx context.Context, requests []RenameRequest) ([]string, error) {
 	results := make([]string, len(requests))
 	var err error
-	
+
 	for i, req := range requests {
 		if req.IsAlbum {
 			results[i], err = s.RenameAlbum(ctx, req.MessageContent)
 		} else {
 			results[i], err = s.RenameFile(ctx, req.OriginalFilename, req.MessageContent)
 		}
-		
+
 		if err != nil {
 			s.logger.Error("Batch rename failed for item", "index", i, "error", err)
 			// Continue with other files even if one fails
 		}
 	}
-	
+
 	return results, nil
 }

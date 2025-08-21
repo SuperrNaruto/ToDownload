@@ -98,7 +98,7 @@ func ApplyRule(ctx context.Context, rules []database.Rule, inputs *ruleInput) (m
 				continue
 			}
 			groupID, isGroup := inputs.File.Message().GetGroupedID()
-		ok, err := ru.Match(isGroup && groupID != 0)
+			ok, err := ru.Match(isGroup && groupID != 0)
 			if err != nil {
 				logger.Errorf("Failed to match rule: %s", err)
 				continue

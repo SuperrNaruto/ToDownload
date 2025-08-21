@@ -16,27 +16,27 @@ func handleHelpCmd(ctx *ext.Context, update *ext.Update) error {
 	if len(shortHash) > 7 {
 		shortHash = shortHash[:7]
 	}
-	
+
 	// 构建版本信息
 	versionInfo := []msgelem.StatusItem{
 		{Name: "版本", Value: consts.Version, Success: true},
 		{Name: "提交", Value: shortHash, Success: true},
 	}
-	
+
 	// 构建格式化消息
 	text, entities := msgelem.BuildStatusMessage("Save Any Bot - Telegram文件转存工具", versionInfo)
-	
+
 	// 添加提示文本
 	additionalText, additionalEntities := msgelem.BuildFormattedMessage(
 		styling.Plain("\n💡 选择下方功能分类获取详细帮助："),
 	)
-	
+
 	// 合并消息
 	finalText := text + additionalText
 	finalEntities := append(entities, additionalEntities...)
-	
+
 	markup := buildHelpMainMarkup()
-	
+
 	// 使用新的格式化发送方法
 	err := msgelem.ReplyWithFormattedText(ctx, update, finalText, finalEntities, &ext.ReplyOpts{
 		Markup: markup,
@@ -51,12 +51,12 @@ func handleHelpCmd(ctx *ext.Context, update *ext.Update) error {
 • 提交: %s
 
 💡 选择下方功能分类获取详细帮助：`, consts.Version, shortHash)
-		
+
 		ctx.Reply(update, ext.ReplyTextString(fallbackText), &ext.ReplyOpts{
 			Markup: markup,
 		})
 	}
-	
+
 	return dispatcher.EndGroups
 }
 
@@ -120,11 +120,11 @@ func buildHelpMainMarkup() *tg.ReplyInlineMarkup {
 func handleHelpCallback(ctx *ext.Context, update *ext.Update) error {
 	callback := update.CallbackQuery
 	data := string(callback.Data)
-	
+
 	var helpText string
 	var helpEntities []tg.MessageEntityClass
 	var markup *tg.ReplyInlineMarkup
-	
+
 	switch data {
 	case "help_save":
 		helpText, helpEntities = buildFormattedSaveHelpText()
@@ -156,34 +156,34 @@ func handleHelpCallback(ctx *ext.Context, update *ext.Update) error {
 		if len(shortHash) > 7 {
 			shortHash = shortHash[:7]
 		}
-		
+
 		versionInfo := []msgelem.StatusItem{
 			{Name: "版本", Value: consts.Version, Success: true},
 			{Name: "提交", Value: shortHash, Success: true},
 		}
-		
+
 		text, entities := msgelem.BuildStatusMessage("Save Any Bot - Telegram文件转存工具", versionInfo)
 		additionalText, additionalEntities := msgelem.BuildFormattedMessage(
 			styling.Plain("\n💡 选择下方功能分类获取详细帮助："),
 		)
-		
+
 		helpText = text + additionalText
 		helpEntities = append(entities, additionalEntities...)
 		markup = buildHelpMainMarkup()
 	default:
 		return dispatcher.EndGroups
 	}
-	
+
 	// 使用格式化编辑消息
 	peer := &tg.InputPeerUser{UserID: callback.Peer.(*tg.PeerUser).UserID}
 	err := msgelem.EditWithFormattedText(ctx, peer, callback.MsgID, helpText, helpEntities, markup)
-	
+
 	if err != nil {
 		// 如果编辑失败，尝试发送新消息（fallback到纯文本）
 		fallbackText := helpText // 使用相同的文本，但没有entities
 		msgelem.SendFormattedMessage(ctx, callback.Peer.(*tg.PeerUser).UserID, fallbackText, nil, markup)
 	}
-	
+
 	return dispatcher.EndGroups
 }
 
@@ -210,7 +210,7 @@ func buildFormattedSaveHelpText() (string, []tg.MessageEntityClass) {
 			Title: "基础使用方法",
 			Items: []string{
 				"1️⃣ 转发文件到bot",
-				"2️⃣ 选择存储位置", 
+				"2️⃣ 选择存储位置",
 				"3️⃣ 确认保存",
 			},
 		},
@@ -239,7 +239,7 @@ func buildFormattedSaveHelpText() (string, []tg.MessageEntityClass) {
 			},
 		},
 	}
-	
+
 	return msgelem.BuildHelpMessage("文件保存功能", "快速保存Telegram文件到各种存储", sections)
 }
 
@@ -250,7 +250,7 @@ func buildFormattedStorageHelpText() (string, []tg.MessageEntityClass) {
 			Title: "存储类型",
 			Items: []string{
 				"📁 Alist - 支持多种云盘",
-				"🌐 WebDAV - 标准WebDAV协议", 
+				"🌐 WebDAV - 标准WebDAV协议",
 				"☁️ MinIO/S3 - 对象存储服务",
 				"💾 本地存储 - 服务器本地磁盘",
 				"📱 Telegram - 上传到Telegram频道",
@@ -276,7 +276,7 @@ func buildFormattedStorageHelpText() (string, []tg.MessageEntityClass) {
 			},
 		},
 	}
-	
+
 	return msgelem.BuildHelpMessage("存储配置管理", "管理多种存储后端配置", sections)
 }
 

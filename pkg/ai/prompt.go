@@ -119,7 +119,7 @@ func ValidateFilename(filename string) bool {
 // SanitizeFilename removes or replaces invalid characters in filename
 func SanitizeFilename(filename string) string {
 	filename = strings.TrimSpace(filename)
-	
+
 	// Replace invalid characters with underscores
 	replacements := map[string]string{
 		"/":  "_",
@@ -132,12 +132,12 @@ func SanitizeFilename(filename string) string {
 		">":  "_",
 		"|":  "_",
 		// 额外的路径安全字符处理
-		"..": "_",    // 防止目录遍历
-		"#":  "_",    // URL片段标识符
-		"%":  "_",    // URL编码字符
-		"&":  "_",    // URL参数分隔符
-		"+":  "_",    // URL空格编码
-		"=":  "_",    // URL参数赋值符
+		"..": "_", // 防止目录遍历
+		"#":  "_", // URL片段标识符
+		"%":  "_", // URL编码字符
+		"&":  "_", // URL参数分隔符
+		"+":  "_", // URL空格编码
+		"=":  "_", // URL参数赋值符
 	}
 
 	for old, new := range replacements {
@@ -151,7 +151,7 @@ func SanitizeFilename(filename string) string {
 
 	// Trim underscores from start and end
 	filename = strings.Trim(filename, "_")
-	
+
 	// 防止空文件名
 	if filename == "" {
 		filename = "untitled"
@@ -196,49 +196,49 @@ func ValidateStoragePath(storagePath string) error {
 	if len(storagePath) > 1000 {
 		return fmt.Errorf("storage path too long: %d characters", len(storagePath))
 	}
-	
+
 	// 检查危险的路径模式
 	dangerousPatterns := []string{
-		"../",         // 目录遍历
-		"..\\",        // Windows目录遍历
-		"//",          // 双斜杠可能导致URL解析问题
-		"\\\\",        // 双反斜杠
-		"./",          // 当前目录引用（在某些上下文中可能有问题）
+		"../",  // 目录遍历
+		"..\\", // Windows目录遍历
+		"//",   // 双斜杠可能导致URL解析问题
+		"\\\\", // 双反斜杠
+		"./",   // 当前目录引用（在某些上下文中可能有问题）
 	}
-	
+
 	for _, pattern := range dangerousPatterns {
 		if strings.Contains(storagePath, pattern) {
 			return fmt.Errorf("storage path contains dangerous pattern: %s", pattern)
 		}
 	}
-	
+
 	// 检查每个路径分段
 	pathSegments := strings.Split(strings.Trim(storagePath, "/"), "/")
 	for _, segment := range pathSegments {
 		if segment == "" {
 			continue // 跳过空分段
 		}
-		
+
 		// 检查保留名称（Windows系统保留名称）
 		reservedNames := []string{
 			"CON", "PRN", "AUX", "NUL",
 			"COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
 			"LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
 		}
-		
+
 		segmentUpper := strings.ToUpper(segment)
 		for _, reserved := range reservedNames {
 			if segmentUpper == reserved || strings.HasPrefix(segmentUpper, reserved+".") {
 				return fmt.Errorf("storage path contains reserved name: %s", segment)
 			}
 		}
-		
+
 		// 检查分段长度
 		if len(segment) > 255 {
 			return fmt.Errorf("path segment too long: %s", segment)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -246,25 +246,25 @@ func ValidateStoragePath(storagePath string) error {
 func SanitizeStoragePath(storagePath string) string {
 	// 首先标准化路径分隔符
 	normalizedPath := strings.ReplaceAll(storagePath, "\\", "/")
-	
+
 	// 移除危险模式
 	normalizedPath = strings.ReplaceAll(normalizedPath, "../", "")
 	normalizedPath = strings.ReplaceAll(normalizedPath, "..\\", "")
 	normalizedPath = strings.ReplaceAll(normalizedPath, "//", "/")
 	normalizedPath = strings.ReplaceAll(normalizedPath, "./", "")
-	
+
 	// 分割路径并清理每个分段
 	pathSegments := strings.Split(strings.Trim(normalizedPath, "/"), "/")
 	cleanedSegments := make([]string, 0, len(pathSegments))
-	
+
 	for _, segment := range pathSegments {
 		if segment == "" {
 			continue
 		}
-		
+
 		// 清理每个分段
 		cleanedSegment := SanitizeFilename(segment)
-		
+
 		// 确保不是保留名称
 		segmentUpper := strings.ToUpper(cleanedSegment)
 		reservedNames := []string{
@@ -272,19 +272,19 @@ func SanitizeStoragePath(storagePath string) string {
 			"COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
 			"LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
 		}
-		
+
 		for _, reserved := range reservedNames {
 			if segmentUpper == reserved {
 				cleanedSegment = "safe_" + cleanedSegment
 				break
 			}
 		}
-		
+
 		cleanedSegments = append(cleanedSegments, cleanedSegment)
 	}
-	
+
 	result := strings.Join(cleanedSegments, "/")
-	
+
 	// 最终长度检查
 	if len(result) > 1000 {
 		result = result[:1000]
@@ -293,6 +293,6 @@ func SanitizeStoragePath(storagePath string) string {
 			result = result[:lastSlash]
 		}
 	}
-	
+
 	return result
 }

@@ -13,11 +13,11 @@ import (
 	"github.com/krau/SaveAny-Bot/client/bot/handlers/utils/msgelem"
 	"github.com/krau/SaveAny-Bot/client/bot/handlers/utils/ruleutil"
 	"github.com/krau/SaveAny-Bot/common/utils/tgutil"
-	"github.com/krau/SaveAny-Bot/pkg/consts"
 	"github.com/krau/SaveAny-Bot/core"
 	"github.com/krau/SaveAny-Bot/core/batchtftask"
 	"github.com/krau/SaveAny-Bot/core/tftask"
 	"github.com/krau/SaveAny-Bot/database"
+	"github.com/krau/SaveAny-Bot/pkg/consts"
 	"github.com/krau/SaveAny-Bot/pkg/tfile"
 	"github.com/krau/SaveAny-Bot/storage"
 	"github.com/rs/xid"
@@ -54,7 +54,7 @@ func CreateAndAddTGFileTaskWithEdit(ctx *ext.Context, userID int64, stor storage
 	// Generate filename using AI if available, otherwise use original
 	fileName := tgutil.GenFileNameFromMessage(*file.Message())
 	storagePath := stor.JoinStoragePath(path.Join(dirPath, fileName))
-	
+
 	injectCtx := tgutil.ExtWithContext(ctx.Context, ctx)
 	taskid := xid.New().String()
 	task, err := tftask.NewTGFileTask(taskid, injectCtx, file, stor, storagePath,
@@ -170,13 +170,13 @@ func CreateAndAddBatchTGFileTaskWithEdit(ctx *ext.Context, userID int64, stor st
 		if len(afiles) <= 1 {
 			continue
 		}
-		
+
 		// 提取tfile.TGFileMessage切片用于AI重命名
 		albumTFiles := make([]tfile.TGFileMessage, len(afiles))
 		for i, af := range afiles {
 			albumTFiles[i] = af.file
 		}
-		
+
 		// 生成相册文件名（这将统一使用一次AI调用）
 		albumFilenames, err := tgutil.GenerateAlbumFilenames(ctx, albumTFiles)
 		if err != nil {
@@ -187,7 +187,7 @@ func CreateAndAddBatchTGFileTaskWithEdit(ctx *ext.Context, userID int64, stor st
 				albumFilenames[i] = af.file.Name()
 			}
 		}
-		
+
 		// 从第一个文件名中提取基础名称作为文件夹名（确保命名一致）
 		var albumDir string
 		if len(albumFilenames) > 0 {
@@ -195,7 +195,7 @@ func CreateAndAddBatchTGFileTaskWithEdit(ctx *ext.Context, userID int64, stor st
 			firstFilename := albumFilenames[0]
 			ext := filepath.Ext(firstFilename)
 			nameWithoutExt := strings.TrimSuffix(firstFilename, ext)
-			
+
 			// 找到最后一个下划线的位置，去掉序号部分（如 _01）
 			if lastUnderscoreIndex := strings.LastIndex(nameWithoutExt, "_"); lastUnderscoreIndex > 0 {
 				potentialSequence := nameWithoutExt[lastUnderscoreIndex+1:]
@@ -213,17 +213,17 @@ func CreateAndAddBatchTGFileTaskWithEdit(ctx *ext.Context, userID int64, stor st
 			// 回退到原有逻辑
 			albumDir = strings.TrimSuffix(path.Base(afiles[0].file.Name()), path.Ext(afiles[0].file.Name()))
 		}
-		
+
 		// 存储以第一个文件的存储为准
 		albumStor := afiles[0].storage
-		
+
 		// 获取第一个文件的目录路径（所有相册文件应该使用相同的目录路径）
 		firstDirPath := ""
 		if len(afiles) > 0 {
 			_, firstFileDirPath := applyRule(afiles[0].file)
 			firstDirPath = firstFileDirPath.String()
 		}
-		
+
 		// 如果dirPath是NEW-FOR-ALBUM，则直接使用albumDir作为目录
 		var finalDirPath string
 		if firstDirPath == consts.RuleDirPathNewForAlbum {
@@ -231,7 +231,7 @@ func CreateAndAddBatchTGFileTaskWithEdit(ctx *ext.Context, userID int64, stor st
 		} else {
 			finalDirPath = path.Join(firstDirPath, albumDir)
 		}
-		
+
 		for i, af := range afiles {
 			// 使用生成的文件名而不是原文件名
 			afstorPath := af.storage.JoinStoragePath(path.Join(finalDirPath, albumFilenames[i]))

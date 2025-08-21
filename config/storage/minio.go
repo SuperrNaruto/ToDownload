@@ -35,7 +35,3 @@ func (m *MinioStorageConfig) Validate() error {
 func (m *MinioStorageConfig) GetType() storenum.StorageType {
 	return storenum.Minio
 }
-
-func (m *MinioStorageConfig) GetName() string {
-	return m.Name
-}

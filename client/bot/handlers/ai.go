@@ -22,7 +22,7 @@ func handleAIStatusCmd(ctx *ext.Context, update *ext.Update) error {
 	// 构建状态信息结构
 	var statusItems []msgelem.StatusItem
 	var additionalParts []styling.StyledTextOption
-	
+
 	// 检查全局AI配置
 	if !config.Cfg.AI.IsEnabled() {
 		statusItems = append(statusItems,
@@ -42,7 +42,7 @@ func handleAIStatusCmd(ctx *ext.Context, update *ext.Update) error {
 			msgelem.StatusItem{Name: "超时时间", Value: fmt.Sprintf("%v", config.Cfg.AI.GetTimeout()), Success: true},
 			msgelem.StatusItem{Name: "重试次数", Value: fmt.Sprintf("%d", config.Cfg.AI.GetMaxRetries()), Success: true},
 		)
-		
+
 		// 检查AI服务是否已初始化
 		if tgutil.IsRenameServiceInitialized() {
 			renameService := tgutil.GetRenameService()
@@ -68,17 +68,17 @@ func handleAIStatusCmd(ctx *ext.Context, update *ext.Update) error {
 			)
 		}
 	}
-	
+
 	// 构建主要状态消息
 	statusText, statusEntities := msgelem.BuildStatusMessage("AI重命名功能状态", statusItems)
-	
+
 	// 添加额外信息
 	var additionalText string
 	var additionalEntities []tg.MessageEntityClass
 	if len(additionalParts) > 0 {
 		additionalText, additionalEntities = msgelem.BuildFormattedMessage(additionalParts...)
 	}
-	
+
 	// 添加命令说明
 	commandText, commandEntities := msgelem.BuildFormattedMessage(
 		styling.Plain("\n\n"),
@@ -89,11 +89,11 @@ func handleAIStatusCmd(ctx *ext.Context, update *ext.Update) error {
 		styling.Code("/ai_toggle"),
 		styling.Plain(" - 开启/关闭AI重命名功能"),
 	)
-	
+
 	// 合并所有部分
 	finalText := statusText + additionalText + commandText
 	finalEntities := append(append(statusEntities, additionalEntities...), commandEntities...)
-	
+
 	// 发送格式化消息
 	err := msgelem.ReplyWithFormattedText(ctx, update, finalText, finalEntities, nil)
 	if err != nil {
@@ -111,7 +111,6 @@ func handleAIStatusCmd(ctx *ext.Context, update *ext.Update) error {
 	return dispatcher.EndGroups
 }
 
-
 // handleAIToggleCmd handles the /ai_toggle command - toggle AI rename functionality
 func handleAIToggleCmd(ctx *ext.Context, update *ext.Update) error {
 	logger := log.FromContext(ctx)
@@ -120,7 +119,7 @@ func handleAIToggleCmd(ctx *ext.Context, update *ext.Update) error {
 	// 构建当前状态信息
 	currentStatus := config.Cfg.AI.IsEnabled()
 	var statusItems []msgelem.StatusItem
-	
+
 	// 主状态
 	statusValue := "已禁用"
 	if currentStatus {
@@ -133,23 +132,23 @@ func handleAIToggleCmd(ctx *ext.Context, update *ext.Update) error {
 		msgelem.StatusItem{Name: "超时时间", Value: fmt.Sprintf("%v", config.Cfg.AI.GetTimeout()), Success: true},
 		msgelem.StatusItem{Name: "重试次数", Value: fmt.Sprintf("%d", config.Cfg.AI.GetMaxRetries()), Success: true},
 	)
-	
+
 	// 构建状态消息
 	statusText, statusEntities := msgelem.BuildStatusMessage("AI功能切换", statusItems)
-	
+
 	// 添加操作提示
 	promptText, promptEntities := msgelem.BuildFormattedMessage(
 		styling.Plain("\n"),
 		styling.Bold("请选择操作:"),
 	)
-	
+
 	// 合并消息
 	statusMsg := statusText + promptText
 	finalEntities := append(statusEntities, promptEntities...)
 
 	// Create inline keyboard for toggle functionality
 	buttons := make([]tg.KeyboardButtonClass, 0)
-	
+
 	if currentStatus {
 		// If AI is enabled, show disable option
 		buttons = append(buttons, &tg.KeyboardButtonCallback{
@@ -173,13 +172,13 @@ func handleAIToggleCmd(ctx *ext.Context, update *ext.Update) error {
 			finalEntities = append(finalEntities, warningEntities...)
 		}
 	}
-	
+
 	// Add status check button
 	buttons = append(buttons, &tg.KeyboardButtonCallback{
 		Text: "🔄 刷新状态",
 		Data: []byte("ai_refresh"),
 	})
-	
+
 	markup := &tg.ReplyInlineMarkup{}
 	row := tg.KeyboardButtonRow{}
 	row.Buttons = buttons
@@ -212,7 +211,6 @@ func handleAIToggleCmd(ctx *ext.Context, update *ext.Update) error {
 	}
 	return dispatcher.EndGroups
 }
-
 
 // handleAIToggleCallback handles the callback queries from AI toggle buttons
 func handleAIToggleCallback(ctx *ext.Context, update *ext.Update) error {

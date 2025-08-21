@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	
+
 	"github.com/gotd/td/telegram/message/styling"
 	"github.com/gotd/td/tg"
 )
@@ -86,7 +86,7 @@ func FormatDuration(d time.Duration) string {
 // BuildMessage 构建格式化消息
 func (t *MessageTemplate) BuildMessage() string {
 	var msg strings.Builder
-	
+
 	// 标题部分
 	if t.Title != "" {
 		if t.Status != "" {
@@ -95,17 +95,17 @@ func (t *MessageTemplate) BuildMessage() string {
 			msg.WriteString(fmt.Sprintf("**%s**\n", t.Title))
 		}
 	}
-	
+
 	// 描述部分
 	if t.Description != "" {
 		msg.WriteString(fmt.Sprintf("%s\n", t.Description))
 	}
-	
+
 	// 分隔线
 	if len(t.Items) > 0 {
 		msg.WriteString("\n")
 	}
-	
+
 	// 项目列表
 	for _, item := range t.Items {
 		line := t.formatItem(item)
@@ -113,7 +113,7 @@ func (t *MessageTemplate) BuildMessage() string {
 			msg.WriteString(line + "\n")
 		}
 	}
-	
+
 	// 操作说明
 	if len(t.Actions) > 0 {
 		msg.WriteString("\n")
@@ -121,12 +121,12 @@ func (t *MessageTemplate) BuildMessage() string {
 			msg.WriteString(fmt.Sprintf("💡 %s\n", action))
 		}
 	}
-	
+
 	// 页脚
 	if t.Footer != "" {
 		msg.WriteString(fmt.Sprintf("\n%s", t.Footer))
 	}
-	
+
 	return msg.String()
 }
 
@@ -135,7 +135,7 @@ func (t *MessageTemplate) formatItem(item TemplateItem) string {
 	if item.Value == "" {
 		return ""
 	}
-	
+
 	switch item.Type {
 	case ItemTypeCode:
 		return fmt.Sprintf("%s **%s**: `%s`", item.Icon, item.Label, item.Value)
@@ -170,11 +170,29 @@ func parseSize(value string) (int64, bool) {
 func formatProgress(value string) string {
 	var current, total int
 	if n, err := fmt.Sscanf(value, "%d/%d", &current, &total); n == 2 && err == nil {
-		percent := float64(current) / float64(total) * 100
-		bar := strings.Repeat("█", int(percent/10)) + strings.Repeat("░", 10-int(percent/10))
-		return fmt.Sprintf("%s %.1f%% (%d/%d)", bar, percent, current, total)
+		return FormatProgressBarWithLength(int64(current), int64(total), 20)
 	}
 	return value
+}
+
+// FormatProgressBarWithLength 创建指定长度的进度条
+func FormatProgressBarWithLength(processedBytes, totalBytes int64, barLength int) string {
+	if totalBytes <= 0 {
+		emptyBar := strings.Repeat("░", barLength)
+		return fmt.Sprintf("%s **0.0%%**", emptyBar)
+	}
+
+	percent := float64(processedBytes) / float64(totalBytes) * 100
+
+	// 计算填充的字符数
+	filled := int(percent * float64(barLength) / 100)
+	if filled > barLength {
+		filled = barLength
+	}
+
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", barLength-filled)
+
+	return fmt.Sprintf("%s **%.1f%%**", bar, percent)
 }
 
 // 预定义模板构建器
@@ -215,6 +233,17 @@ func NewProcessingTemplate(title, description string) *MessageTemplate {
 	}
 }
 
+// AddProgressBar 添加格式化的进度条
+func (t *MessageTemplate) AddProgressBar(icon, label string, current, total int64, barLength int) *MessageTemplate {
+	t.Items = append(t.Items, TemplateItem{
+		Icon:  icon,
+		Label: label,
+		Value: fmt.Sprintf("%d|%d|%d", current, total, barLength), // 特殊格式用于识别
+		Type:  ItemTypeProgress,
+	})
+	return t
+}
+
 // AddItem 添加项目
 func (t *MessageTemplate) AddItem(icon, label, value string, itemType ItemType) *MessageTemplate {
 	t.Items = append(t.Items, TemplateItem{
@@ -243,43 +272,43 @@ func (t *MessageTemplate) SetFooter(footer string) *MessageTemplate {
 // BuildStorageStatusMessage 构建存储状态消息
 func BuildStorageStatusMessage(storageName, storageType, status string, isDefault bool) string {
 	template := NewInfoTemplate("存储状态", "")
-	
+
 	template.AddItem("📁", "存储名称", storageName, ItemTypeText)
 	template.AddItem("🔧", "存储类型", storageType, ItemTypeText)
 	template.AddItem("📊", "状态", status, ItemTypeStatus)
-	
+
 	if isDefault {
 		template.AddItem("⭐", "默认存储", "是", ItemTypeText)
 	}
-	
+
 	return template.BuildMessage()
 }
 
 // BuildFileInfoMessage 构建文件信息消息
 func BuildFileInfoMessage(fileName string, fileSize int64, mimeType string) string {
 	template := NewInfoTemplate("文件信息", "")
-	
+
 	template.AddItem("📄", "文件名", fileName, ItemTypeCode)
 	template.AddItem("📏", "文件大小", fmt.Sprintf("%d", fileSize), ItemTypeSize)
 	template.AddItem("🏷️", "文件类型", mimeType, ItemTypeText)
-	
+
 	return template.BuildMessage()
 }
 
 // BuildTaskProgressMessage 构建任务进度消息
 func BuildTaskProgressMessage(taskName string, current, total int, status string) string {
 	template := NewProcessingTemplate("任务进度", taskName)
-	
+
 	template.AddItem("📊", "进度", fmt.Sprintf("%d/%d", current, total), ItemTypeProgress)
 	template.AddItem("📱", "状态", status, ItemTypeStatus)
-	
+
 	return template.BuildMessage()
 }
 
 // BuildConfigMessage 构建配置消息
 func BuildConfigMessage(title string, configs map[string]string) string {
 	template := NewInfoTemplate(title, "当前配置详情：")
-	
+
 	for key, value := range configs {
 		icon := "⚙️"
 		switch key {
@@ -294,14 +323,14 @@ func BuildConfigMessage(title string, configs map[string]string) string {
 		}
 		template.AddItem(icon, key, value, ItemTypeText)
 	}
-	
+
 	return template.BuildMessage()
 }
 
 // BuildFormattedMessage 构建格式化消息（使用 Telegram 实体）
 func (t *MessageTemplate) BuildFormattedMessage() (string, []tg.MessageEntityClass) {
 	var parts []styling.StyledTextOption
-	
+
 	// 标题部分
 	if t.Title != "" {
 		if t.Status != "" {
@@ -317,19 +346,19 @@ func (t *MessageTemplate) BuildFormattedMessage() (string, []tg.MessageEntityCla
 			)
 		}
 	}
-	
+
 	// 描述部分
 	if t.Description != "" {
 		parts = append(parts,
 			styling.Plain(t.Description+"\n"),
 		)
 	}
-	
+
 	// 分隔线
 	if len(t.Items) > 0 {
 		parts = append(parts, styling.Plain("\n"))
 	}
-	
+
 	// 项目列表
 	for _, item := range t.Items {
 		itemParts := t.formatItemFormatted(item)
@@ -338,7 +367,7 @@ func (t *MessageTemplate) BuildFormattedMessage() (string, []tg.MessageEntityCla
 			parts = append(parts, styling.Plain("\n"))
 		}
 	}
-	
+
 	// 操作说明
 	if len(t.Actions) > 0 {
 		parts = append(parts, styling.Plain("\n"))
@@ -348,14 +377,14 @@ func (t *MessageTemplate) BuildFormattedMessage() (string, []tg.MessageEntityCla
 			)
 		}
 	}
-	
+
 	// 页脚
 	if t.Footer != "" {
 		parts = append(parts,
 			styling.Plain("\n"+t.Footer),
 		)
 	}
-	
+
 	return BuildFormattedMessage(parts...)
 }
 
@@ -364,15 +393,19 @@ func (t *MessageTemplate) formatItemFormatted(item TemplateItem) []styling.Style
 	if item.Value == "" {
 		return nil
 	}
-	
+
 	var parts []styling.StyledTextOption
-	
+
+	// 计算最大标签长度进行对齐
+	maxLabelLength := t.getMaxLabelLength()
+	paddedLabel := t.padLabel(item.Label, maxLabelLength)
+
 	// 图标和标签
 	parts = append(parts,
 		styling.Plain(item.Icon+" "),
-		styling.Bold(item.Label+": "),
+		styling.Bold(paddedLabel+": "),
 	)
-	
+
 	// 根据类型格式化值
 	switch item.Type {
 	case ItemTypeCode:
@@ -393,10 +426,60 @@ func (t *MessageTemplate) formatItemFormatted(item TemplateItem) []styling.Style
 		statusIcon := StatusIcon(item.Value)
 		parts = append(parts, styling.Plain(statusIcon+" "+item.Value))
 	case ItemTypeProgress:
-		parts = append(parts, styling.Plain(formatProgress(item.Value)))
+		// 解析进度条数据
+		var current, total, barLength int64
+		if n, err := fmt.Sscanf(item.Value, "%d|%d|%d", &current, &total, &barLength); n == 3 && err == nil {
+			// 使用格式化的进度条
+			progressParts := FormatProgressBarFormatted(current, total, int(barLength))
+			parts = append(parts, progressParts...)
+		} else {
+			// 回退到普通文本
+			parts = append(parts, styling.Plain(formatProgress(item.Value)))
+		}
 	default:
 		parts = append(parts, styling.Plain(item.Value))
 	}
-	
+
 	return parts
+}
+
+// getMaxLabelLength 计算所有项目中标签的最大长度
+func (t *MessageTemplate) getMaxLabelLength() int {
+	maxLength := 0
+	for _, item := range t.Items {
+		// 计算中文字符长度（中文字符占用更多显示宽度）
+		length := calculateDisplayWidth(item.Label)
+		if length > maxLength {
+			maxLength = length
+		}
+	}
+	return maxLength
+}
+
+// padLabel 填充标签以对齐
+func (t *MessageTemplate) padLabel(label string, maxLength int) string {
+	currentLength := calculateDisplayWidth(label)
+	if currentLength >= maxLength {
+		return label
+	}
+	
+	// 使用空格填充到指定长度
+	padding := maxLength - currentLength
+	return label + strings.Repeat(" ", padding)
+}
+
+// calculateDisplayWidth 计算字符串的显示宽度（针对Telegram优化）
+func calculateDisplayWidth(s string) int {
+	width := 0
+	for _, r := range s {
+		// 针对Telegram客户端调整字符宽度计算
+		if r > 127 {
+			// 中文字符和全角字符在Telegram中占用2个显示宽度
+			width += 2
+		} else {
+			width += 1
+		}
+	}
+	// 为Telegram客户端添加额外的4个空格填充（原来是2个，现在增加到4个）
+	return width + 4
 }

@@ -73,8 +73,7 @@ func AddTask(ctx context.Context, task Exectable) error {
 }
 
 func CancelTask(ctx context.Context, id string) error {
-	err := queueInstance.CancelTask(id)
-	return err
+	return queueInstance.CancelTask(id)
 }
 
 func GetLength(ctx context.Context) int {

@@ -43,17 +43,17 @@ func TestBuildPrompt(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := BuildPrompt(tt.req)
-			
+
 			// For normal file request, check that original filename is included
 			if !tt.req.IsAlbum && !strings.Contains(result, tt.req.OriginalFilename) {
 				t.Errorf("BuildPrompt() should contain original filename %s", tt.req.OriginalFilename)
 			}
-			
+
 			// For album request, should use album prompt template
 			if tt.req.IsAlbum && !strings.Contains(result, "相册") {
 				t.Errorf("BuildPrompt() should use album template for album requests")
 			}
-			
+
 			// Check message content truncation for long messages
 			if len(tt.req.MessageContent) > 1000 {
 				if strings.Contains(result, strings.Repeat("很长的消息内容", 100)) {
@@ -186,7 +186,7 @@ func TestSanitizeFilename(t *testing.T) {
 			if result != tt.expected {
 				t.Errorf("SanitizeFilename(%s) = %s, expected %s", tt.filename, result, tt.expected)
 			}
-			
+
 			// Ensure result is always valid
 			if !ValidateFilename(result) && result != "" {
 				t.Errorf("SanitizeFilename(%s) produced invalid filename: %s", tt.filename, result)

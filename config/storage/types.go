@@ -16,3 +16,8 @@ type BaseConfig struct {
 	Enable    bool           `toml:"enable" mapstructure:"enable" json:"enable"`
 	RawConfig map[string]any `toml:"-" mapstructure:",remain"`
 }
+
+// GetName 返回存储配置的名称
+func (b *BaseConfig) GetName() string {
+	return b.Name
+}

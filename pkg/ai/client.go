@@ -117,7 +117,7 @@ func (c *Client) GenerateText(ctx context.Context, prompt string) (string, error
 			},
 		},
 		Temperature: 0.1, // Low temperature for consistent results
-		MaxTokens:   150,  // Reasonable limit for filename generation
+		MaxTokens:   150, // Reasonable limit for filename generation
 	}
 
 	resp, err := c.ChatCompletion(ctx, req)

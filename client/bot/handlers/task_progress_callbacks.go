@@ -19,6 +19,7 @@ func handleCancelTaskCallback(ctx *ext.Context, u *ext.Update) error {
 
 	logger := log.FromContext(ctx)
 	logger.Infof("User %d requested to cancel task %s", query.GetUserID(), taskID)
+	logger.Debugf("Cancel request - full callback data: %s", data)
 
 	// 直接尝试取消任务
 	err := core.CancelTask(ctx, taskID)
@@ -28,6 +29,7 @@ func handleCancelTaskCallback(ctx *ext.Context, u *ext.Update) error {
 		return err
 	}
 
+	logger.Infof("Task %s cancellation request processed successfully", taskID)
 	// 发送成功回答
 	_, err = ctx.AnswerCallback(msgelem.CallbackAnswer(query.GetQueryID(), "✅ 任务已取消"))
 	return err

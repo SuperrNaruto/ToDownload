@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"sync/atomic"
+	
+	"github.com/charmbracelet/log"
 )
 
 type ProgressWriterAt struct {
@@ -16,6 +18,14 @@ type ProgressWriterAt struct {
 }
 
 func (w *ProgressWriterAt) WriteAt(p []byte, off int64) (int, error) {
+	// Check if context is cancelled before writing
+	select {
+	case <-w.ctx.Done():
+		log.FromContext(w.ctx).Debugf("WriteAt cancelled by context: %v", w.ctx.Err())
+		return 0, w.ctx.Err()
+	default:
+	}
+	
 	at, err := w.wrAt.WriteAt(p, off)
 	if err != nil {
 		return 0, err
@@ -52,6 +62,13 @@ type ProgressWriter struct {
 }
 
 func (w *ProgressWriter) Write(p []byte) (int, error) {
+	// Check if context is cancelled before writing
+	select {
+	case <-w.ctx.Done():
+		return 0, w.ctx.Err()
+	default:
+	}
+	
 	at, err := w.wrAt.Write(p)
 	if err != nil {
 		return 0, err

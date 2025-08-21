@@ -14,7 +14,14 @@ import (
 )
 
 func handleCancelCallback(ctx *ext.Context, update *ext.Update) error {
-	parts := strings.Split(string(update.CallbackQuery.Data), " ")
+	data := string(update.CallbackQuery.Data)
+	
+	// 如果是cancel_task:格式，跳过此处理器，让专用处理器处理
+	if strings.HasPrefix(data, "cancel_task:") {
+		return nil // 让其他处理器处理
+	}
+	
+	parts := strings.Split(data, " ")
 	if len(parts) < 2 {
 		// 如果是简单的 "cancel" 回调，清理相关缓存并关闭消息
 		chatID := update.GetUserChat().GetID()

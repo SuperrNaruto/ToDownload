@@ -16,6 +16,13 @@ import (
 
 func (t *Task) Execute(ctx context.Context) error {
 	logger := log.FromContext(ctx).WithPrefix(fmt.Sprintf("file[%s]", t.File.Name()))
+	
+	// Check context before starting
+	if err := ctx.Err(); err != nil {
+		logger.Debugf("Context already cancelled before execution: %v", err)
+		return err
+	}
+	
 	if t.Progress != nil {
 		t.Progress.OnStart(ctx, t)
 	}
@@ -24,6 +31,13 @@ func (t *Task) Execute(ctx context.Context) error {
 	}
 
 	logger.Info("Starting file download")
+	
+	// Check context before creating file
+	if err := ctx.Err(); err != nil {
+		logger.Debugf("Context cancelled before creating local file: %v", err)
+		return err
+	}
+	
 	localFile, err := fsutil.CreateFile(t.localPath)
 	if err != nil {
 		return fmt.Errorf("failed to create local file: %w", err)
@@ -40,8 +54,17 @@ func (t *Task) Execute(ctx context.Context) error {
 			t.Progress.OnDone(ctx, t, err)
 		}
 	}()
+	
+	// Check context before starting download
+	if err := ctx.Err(); err != nil {
+		logger.Debugf("Context cancelled before starting download: %v", err)
+		return err
+	}
+	
+	logger.Debugf("Starting parallel download with context")
 	_, err = tfile.NewDownloader(t.File).Parallel(ctx, wrAt)
 	if err != nil {
+		logger.Debugf("Download failed: %v", err)
 		return fmt.Errorf("failed to download file: %w", err)
 	}
 	logger.Infof("File downloaded successfully")

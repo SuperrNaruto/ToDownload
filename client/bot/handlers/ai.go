@@ -7,7 +7,9 @@ import (
 	"github.com/celestix/gotgproto/dispatcher"
 	"github.com/celestix/gotgproto/ext"
 	"github.com/charmbracelet/log"
+	"github.com/gotd/td/telegram/message/styling"
 	"github.com/gotd/td/tg"
+	"github.com/krau/SaveAny-Bot/client/bot/handlers/utils/msgelem"
 	"github.com/krau/SaveAny-Bot/common/utils/tgutil"
 	"github.com/krau/SaveAny-Bot/config"
 )
@@ -17,43 +19,95 @@ func handleAIStatusCmd(ctx *ext.Context, update *ext.Update) error {
 	logger := log.FromContext(ctx)
 	logger.Debug("Processing AI status command")
 
-	var statusMsg string
+	// 构建状态信息结构
+	var statusItems []msgelem.StatusItem
+	var additionalParts []styling.StyledTextOption
 	
-	// Check global AI configuration
+	// 检查全局AI配置
 	if !config.Cfg.AI.IsEnabled() {
-		statusMsg = "🤖 AI重命名功能状态: 已禁用 (全局配置)\n\n"
-		statusMsg += fmt.Sprintf("📍 配置地址: %s\n", config.Cfg.AI.BaseURL)
-		statusMsg += fmt.Sprintf("🤖 模型: %s\n", config.Cfg.AI.Model)
-		statusMsg += "⚠️ 需要在配置文件中启用AI功能"
+		statusItems = append(statusItems,
+			msgelem.StatusItem{Name: "AI重命名功能", Value: "已禁用 (全局配置)", Success: false},
+			msgelem.StatusItem{Name: "配置地址", Value: config.Cfg.AI.BaseURL, Success: true},
+			msgelem.StatusItem{Name: "模型", Value: config.Cfg.AI.Model, Success: true},
+		)
+		additionalParts = append(additionalParts,
+			styling.Plain("\n⚠️ "),
+			styling.Bold("需要在配置文件中启用AI功能"),
+		)
 	} else {
-		statusMsg = "🤖 AI重命名功能状态: 已启用 ✅\n\n"
-		statusMsg += fmt.Sprintf("📍 API地址: %s\n", config.Cfg.AI.BaseURL)
-		statusMsg += fmt.Sprintf("🤖 模型: %s\n", config.Cfg.AI.Model)
-		statusMsg += fmt.Sprintf("⏰ 超时时间: %v\n", config.Cfg.AI.GetTimeout())
-		statusMsg += fmt.Sprintf("🔄 重试次数: %d\n", config.Cfg.AI.GetMaxRetries())
+		statusItems = append(statusItems,
+			msgelem.StatusItem{Name: "AI重命名功能", Value: "已启用", Success: true},
+			msgelem.StatusItem{Name: "API地址", Value: config.Cfg.AI.BaseURL, Success: true},
+			msgelem.StatusItem{Name: "模型", Value: config.Cfg.AI.Model, Success: true},
+			msgelem.StatusItem{Name: "超时时间", Value: fmt.Sprintf("%v", config.Cfg.AI.GetTimeout()), Success: true},
+			msgelem.StatusItem{Name: "重试次数", Value: fmt.Sprintf("%d", config.Cfg.AI.GetMaxRetries()), Success: true},
+		)
 		
-		// Check if AI service is initialized
+		// 检查AI服务是否已初始化
 		if tgutil.IsRenameServiceInitialized() {
 			renameService := tgutil.GetRenameService()
 			if renameService != nil && renameService.IsEnabled() {
-				statusMsg += "\n✅ AI重命名服务: 运行正常\n"
-				statusMsg += "📝 支持功能:\n"
-				statusMsg += "  • 普通文件智能重命名\n"
-				statusMsg += "  • 相册文件统一重命名\n"
-				statusMsg += "  • 自动回退机制"
+				statusItems = append(statusItems,
+					msgelem.StatusItem{Name: "AI重命名服务", Value: "运行正常", Success: true},
+				)
+				additionalParts = append(additionalParts,
+					styling.Plain("\n"),
+					styling.Bold("📝 支持功能:"),
+					styling.Plain("\n  • 普通文件智能重命名"),
+					styling.Plain("\n  • 相册文件统一重命名"),
+					styling.Plain("\n  • 自动回退机制"),
+				)
 			} else {
-				statusMsg += "\n⚠️ AI重命名服务: 未正常运行"
+				statusItems = append(statusItems,
+					msgelem.StatusItem{Name: "AI重命名服务", Value: "未正常运行", Success: false},
+				)
 			}
 		} else {
-			statusMsg += "\n⚠️ AI重命名服务: 未初始化"
+			statusItems = append(statusItems,
+				msgelem.StatusItem{Name: "AI重命名服务", Value: "未初始化", Success: false},
+			)
 		}
 	}
 	
-	statusMsg += "\n\n📋 可用命令:\n"
-	statusMsg += "/ai_status - 查看AI功能状态\n"
-	statusMsg += "/ai_toggle - 开启/关闭AI重命名功能"
-
-	ctx.Reply(update, ext.ReplyTextString(statusMsg), nil)
+	// 构建主要状态消息
+	statusText, statusEntities := msgelem.BuildStatusMessage("AI重命名功能状态", statusItems)
+	
+	// 添加额外信息
+	var additionalText string
+	var additionalEntities []tg.MessageEntityClass
+	if len(additionalParts) > 0 {
+		additionalText, additionalEntities = msgelem.BuildFormattedMessage(additionalParts...)
+	}
+	
+	// 添加命令说明
+	commandText, commandEntities := msgelem.BuildFormattedMessage(
+		styling.Plain("\n\n"),
+		styling.Bold("📋 可用命令:"),
+		styling.Plain("\n"),
+		styling.Code("/ai_status"),
+		styling.Plain(" - 查看AI功能状态\n"),
+		styling.Code("/ai_toggle"),
+		styling.Plain(" - 开启/关闭AI重命名功能"),
+	)
+	
+	// 合并所有部分
+	finalText := statusText + additionalText + commandText
+	finalEntities := append(append(statusEntities, additionalEntities...), commandEntities...)
+	
+	// 发送格式化消息
+	err := msgelem.ReplyWithFormattedText(ctx, update, finalText, finalEntities, nil)
+	if err != nil {
+		// Fallback到纯文本
+		fallbackMsg := fmt.Sprintf("🤖 AI重命名功能状态\n\n")
+		for _, item := range statusItems {
+			icon := "✅"
+			if !item.Success {
+				icon = "❌"
+			}
+			fallbackMsg += fmt.Sprintf("%s %s: %s\n", icon, item.Name, item.Value)
+		}
+		ctx.Reply(update, ext.ReplyTextString(fallbackMsg), nil)
+	}
 	return dispatcher.EndGroups
 }
 
@@ -63,22 +117,35 @@ func handleAIToggleCmd(ctx *ext.Context, update *ext.Update) error {
 	logger := log.FromContext(ctx)
 	logger.Debug("Processing AI toggle command")
 
-	// Build current status message
-	var statusMsg string
+	// 构建当前状态信息
 	currentStatus := config.Cfg.AI.IsEnabled()
+	var statusItems []msgelem.StatusItem
 	
+	// 主状态
+	statusValue := "已禁用"
 	if currentStatus {
-		statusMsg = "🤖 AI重命名功能: 当前已启用 ✅\n\n"
-	} else {
-		statusMsg = "🤖 AI重命名功能: 当前已禁用 ❌\n\n"
+		statusValue = "已启用"
 	}
+	statusItems = append(statusItems,
+		msgelem.StatusItem{Name: "AI重命名功能", Value: statusValue, Success: currentStatus},
+		msgelem.StatusItem{Name: "API地址", Value: config.Cfg.AI.BaseURL, Success: true},
+		msgelem.StatusItem{Name: "模型", Value: config.Cfg.AI.Model, Success: true},
+		msgelem.StatusItem{Name: "超时时间", Value: fmt.Sprintf("%v", config.Cfg.AI.GetTimeout()), Success: true},
+		msgelem.StatusItem{Name: "重试次数", Value: fmt.Sprintf("%d", config.Cfg.AI.GetMaxRetries()), Success: true},
+	)
 	
-	statusMsg += fmt.Sprintf("📍 API地址: %s\n", config.Cfg.AI.BaseURL)
-	statusMsg += fmt.Sprintf("🤖 模型: %s\n", config.Cfg.AI.Model)
-	statusMsg += fmt.Sprintf("⏰ 超时时间: %v\n", config.Cfg.AI.GetTimeout())
-	statusMsg += fmt.Sprintf("🔄 重试次数: %d\n\n", config.Cfg.AI.GetMaxRetries())
+	// 构建状态消息
+	statusText, statusEntities := msgelem.BuildStatusMessage("AI功能切换", statusItems)
 	
-	statusMsg += "请选择操作:"
+	// 添加操作提示
+	promptText, promptEntities := msgelem.BuildFormattedMessage(
+		styling.Plain("\n"),
+		styling.Bold("请选择操作:"),
+	)
+	
+	// 合并消息
+	statusMsg := statusText + promptText
+	finalEntities := append(statusEntities, promptEntities...)
 
 	// Create inline keyboard for toggle functionality
 	buttons := make([]tg.KeyboardButtonClass, 0)
@@ -97,7 +164,13 @@ func handleAIToggleCmd(ctx *ext.Context, update *ext.Update) error {
 				Data: []byte("ai_enable"),
 			})
 		} else {
-			statusMsg += "\n⚠️ 无法启用：AI配置不完整（缺少API地址、密钥或模型配置）"
+			// 添加警告信息
+			warningText, warningEntities := msgelem.BuildFormattedMessage(
+				styling.Plain("\n⚠️ "),
+				styling.Bold("无法启用：AI配置不完整（缺少API地址、密钥或模型配置）"),
+			)
+			statusMsg += warningText
+			finalEntities = append(finalEntities, warningEntities...)
 		}
 	}
 	
@@ -112,19 +185,30 @@ func handleAIToggleCmd(ctx *ext.Context, update *ext.Update) error {
 	row.Buttons = buttons
 	markup.Rows = append(markup.Rows, row)
 
-	// Check if this is a callback query (edit message) or regular command (new message)
+	// 检查是否是回调查询（编辑消息）还是常规命令（新消息）
 	if update.CallbackQuery != nil {
-		// Edit existing message
-		ctx.EditMessage(update.CallbackQuery.GetUserID(), &tg.MessagesEditMessageRequest{
-			ID:          update.CallbackQuery.GetMsgID(),
-			Message:     statusMsg,
-			ReplyMarkup: markup,
-		})
+		// 编辑现有消息
+		peer := &tg.InputPeerUser{UserID: update.CallbackQuery.GetUserID()}
+		err := msgelem.EditWithFormattedText(ctx, peer, update.CallbackQuery.GetMsgID(), statusMsg, finalEntities, markup)
+		if err != nil {
+			// Fallback到简单编辑
+			ctx.EditMessage(update.CallbackQuery.GetUserID(), &tg.MessagesEditMessageRequest{
+				ID:          update.CallbackQuery.GetMsgID(),
+				Message:     statusMsg,
+				ReplyMarkup: markup,
+			})
+		}
 	} else {
-		// Send new message
-		ctx.Reply(update, ext.ReplyTextString(statusMsg), &ext.ReplyOpts{
+		// 发送新消息
+		err := msgelem.ReplyWithFormattedText(ctx, update, statusMsg, finalEntities, &ext.ReplyOpts{
 			Markup: markup,
 		})
+		if err != nil {
+			// Fallback到普通发送
+			ctx.Reply(update, ext.ReplyTextString(statusMsg), &ext.ReplyOpts{
+				Markup: markup,
+			})
+		}
 	}
 	return dispatcher.EndGroups
 }

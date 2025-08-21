@@ -59,6 +59,7 @@ func Register(disp dispatcher.Dispatcher) {
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("help_"), handleHelpCallback))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("onboarding_"), handleOnboardingCallback))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("set_default_storage"), handleOnboardingCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("rule_"), handleRuleCallback))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("cancel_task:"), handleCancelTaskCallback))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("task_detail:"), handleTaskDetailCallback))
 	linkRegexFilter, err := filters.Message.Regex(re.TgMessageLinkRegexString)
@@ -74,6 +75,8 @@ func Register(disp dispatcher.Dispatcher) {
 	disp.AddHandler(handlers.NewMessage(filters.Message.Media, handleSilentMode(handleMediaMessage, handleSilentSaveMedia)))
 	// 添加存储配置响应处理器（需要在其他消息处理器之前）
 	disp.AddHandler(handlers.NewMessage(filters.Message.Text, handleStorageConfigResponse))
+	// 添加规则输入消息处理器
+	disp.AddHandler(handlers.NewMessage(filters.Message.Text, handleRuleInputMessage))
 
 	if config.Cfg.Telegram.Userbot.Enable {
 		go listenMediaMessageEvent(userclient.GetMediaMessageCh())

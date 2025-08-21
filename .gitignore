@@ -34,3 +34,14 @@ node_modules/
 # Task files
 # tasks.json
 # tasks/ 
+
+# Go binaries
+saveany-bot
+saveany-bot.exe
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Process ID files
+*.pid

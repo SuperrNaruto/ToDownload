@@ -70,9 +70,17 @@ func handleNewUserOnboarding(ctx *ext.Context, update *ext.Update) error {
 	
 	markup := buildOnboardingStartMarkup()
 	
-	ctx.Reply(update, ext.ReplyTextString(template.BuildMessage()), &ext.ReplyOpts{
+	// 使用格式化消息发送
+	text, entities := template.BuildFormattedMessage()
+	err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, &ext.ReplyOpts{
 		Markup: markup,
 	})
+	if err != nil {
+		// 如果格式化发送失败，回退到普通发送
+		ctx.Reply(update, ext.ReplyTextString(template.BuildMessage()), &ext.ReplyOpts{
+			Markup: markup,
+		})
+	}
 	
 	return dispatcher.EndGroups
 }
@@ -95,18 +103,36 @@ func handleReturningUserWelcome(ctx *ext.Context, update *ext.Update, user *data
 		template = msgelem.NewInfoTemplate("👋 欢迎回来！", "看起来你还没有配置任何存储")
 		template.AddAction("点击下方按钮开始配置存储")
 		markup := buildQuickSetupMarkup()
-		ctx.Reply(update, ext.ReplyTextString(template.BuildMessage()), &ext.ReplyOpts{
+		
+		// 使用格式化消息发送
+		text, entities := template.BuildFormattedMessage()
+		err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, &ext.ReplyOpts{
 			Markup: markup,
 		})
+		if err != nil {
+			// 如果格式化发送失败，回退到普通发送
+			ctx.Reply(update, ext.ReplyTextString(template.BuildMessage()), &ext.ReplyOpts{
+				Markup: markup,
+			})
+		}
 	} else if !hasDefaultStorage {
 		// 有存储但没有默认存储
 		template = msgelem.NewInfoTemplate("👋 欢迎回来！", "建议设置一个默认存储以便快速保存文件")
 		template.AddItem("📁", "可用存储", fmt.Sprintf("共 %d 个", totalStorages), msgelem.ItemTypeText)
 		template.AddAction("设置默认存储后可以使用静默模式快速保存")
 		markup := buildSetDefaultStorageMarkup()
-		ctx.Reply(update, ext.ReplyTextString(template.BuildMessage()), &ext.ReplyOpts{
+		
+		// 使用格式化消息发送
+		text, entities := template.BuildFormattedMessage()
+		err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, &ext.ReplyOpts{
 			Markup: markup,
 		})
+		if err != nil {
+			// 如果格式化发送失败，回退到普通发送
+			ctx.Reply(update, ext.ReplyTextString(template.BuildMessage()), &ext.ReplyOpts{
+				Markup: markup,
+			})
+		}
 	} else {
 		// 配置完整的用户
 		template = msgelem.NewInfoTemplate("👋 欢迎回来！", "你的配置看起来很不错")
@@ -120,9 +146,18 @@ func handleReturningUserWelcome(ctx *ext.Context, update *ext.Update, user *data
 		template.AddAction("使用 /help 查看所有功能")
 		
 		markup := buildMainFeaturesMarkup()
-		ctx.Reply(update, ext.ReplyTextString(template.BuildMessage()), &ext.ReplyOpts{
+		
+		// 使用格式化消息发送
+		text, entities := template.BuildFormattedMessage()
+		err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, &ext.ReplyOpts{
 			Markup: markup,
 		})
+		if err != nil {
+			// 如果格式化发送失败，回退到普通发送
+			ctx.Reply(update, ext.ReplyTextString(template.BuildMessage()), &ext.ReplyOpts{
+				Markup: markup,
+			})
+		}
 	}
 	
 	return dispatcher.EndGroups
@@ -247,9 +282,8 @@ func handleOnboardingCallback(ctx *ext.Context, update *ext.Update) error {
 	case "onboarding_skip":
 		return handleOnboardingSkip(ctx, update)
 	case "set_default_storage":
-		// 重定向到存储设置
-		update.CallbackQuery.Data = []byte("storage_back_to_list")
-		return handleStorageBackToListCallback(ctx, update)
+		// 显示存储选择界面用于设置默认存储
+		return handleSetDefaultStorageSelection(ctx, update)
 	default:
 		return dispatcher.EndGroups
 	}
@@ -269,12 +303,19 @@ func handleOnboardingStep1(ctx *ext.Context, update *ext.Update) error {
 	
 	markup := msgelem.BuildStorageTypeSelectMarkup()
 	
+	// 使用格式化消息编辑
+	text, entities := template.BuildFormattedMessage()
 	callback := update.CallbackQuery
-	ctx.EditMessage(callback.Peer.(*tg.PeerUser).UserID, &tg.MessagesEditMessageRequest{
-		ID:          callback.MsgID,
-		Message:     template.BuildMessage(),
-		ReplyMarkup: markup,
-	})
+	userPeer := &tg.InputPeerUser{UserID: callback.Peer.(*tg.PeerUser).UserID}
+	err := msgelem.EditWithFormattedText(ctx, userPeer, callback.MsgID, text, entities, markup)
+	if err != nil {
+		// 如果格式化编辑失败，回退到普通编辑
+		ctx.EditMessage(callback.Peer.(*tg.PeerUser).UserID, &tg.MessagesEditMessageRequest{
+			ID:          callback.MsgID,
+			Message:     template.BuildMessage(),
+			ReplyMarkup: markup,
+		})
+	}
 	
 	return dispatcher.EndGroups
 }
@@ -289,11 +330,18 @@ func handleOnboardingSkip(ctx *ext.Context, update *ext.Update) error {
 	template.AddAction("转发文件给我开始保存")
 	template.AddAction("使用 /storage_list 管理存储配置")
 	
+	// 使用格式化消息编辑
+	text, entities := template.BuildFormattedMessage()
 	callback := update.CallbackQuery
-	ctx.EditMessage(callback.Peer.(*tg.PeerUser).UserID, &tg.MessagesEditMessageRequest{
-		ID:      callback.MsgID,
-		Message: template.BuildMessage(),
-	})
+	userPeer := &tg.InputPeerUser{UserID: callback.Peer.(*tg.PeerUser).UserID}
+	err := msgelem.EditWithFormattedText(ctx, userPeer, callback.MsgID, text, entities, nil)
+	if err != nil {
+		// 如果格式化编辑失败，回退到普通编辑
+		ctx.EditMessage(callback.Peer.(*tg.PeerUser).UserID, &tg.MessagesEditMessageRequest{
+			ID:      callback.MsgID,
+			Message: template.BuildMessage(),
+		})
+	}
 	
 	return dispatcher.EndGroups
 }
@@ -326,4 +374,40 @@ func checkOnboardingProgress(ctx *ext.Context, chatID int64, action string) {
 	}
 	
 	cache.Set(cacheKey, status)
+}
+
+// handleSetDefaultStorageSelection 处理设置默认存储的选择界面
+func handleSetDefaultStorageSelection(ctx *ext.Context, update *ext.Update) error {
+	chatID := update.CallbackQuery.GetUserID()
+	
+	// 构建选择默认存储的消息
+	template := msgelem.NewInfoTemplate("⭐ 设置默认存储", "选择一个存储作为默认保存位置")
+	template.AddAction("选择后将用于快速保存和静默模式")
+	
+	// 获取存储选择的标记
+	markup, err := msgelem.BuildSetDefaultStorageMarkup(ctx, chatID)
+	if err != nil {
+		template = msgelem.NewErrorTemplate("获取存储列表失败", err.Error())
+		text, entities := template.BuildFormattedMessage()
+		callback := update.CallbackQuery
+		userPeer := &tg.InputPeerUser{UserID: callback.Peer.(*tg.PeerUser).UserID}
+		msgelem.EditWithFormattedText(ctx, userPeer, callback.MsgID, text, entities, nil)
+		return dispatcher.EndGroups
+	}
+	
+	// 使用格式化消息编辑
+	text, entities := template.BuildFormattedMessage()
+	callback := update.CallbackQuery
+	userPeer := &tg.InputPeerUser{UserID: callback.Peer.(*tg.PeerUser).UserID}
+	err = msgelem.EditWithFormattedText(ctx, userPeer, callback.MsgID, text, entities, markup)
+	if err != nil {
+		// 如果格式化编辑失败，回退到普通编辑
+		ctx.EditMessage(callback.Peer.(*tg.PeerUser).UserID, &tg.MessagesEditMessageRequest{
+			ID:          callback.MsgID,
+			Message:     template.BuildMessage(),
+			ReplyMarkup: markup,
+		})
+	}
+	
+	return dispatcher.EndGroups
 }

@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	
+	"github.com/gotd/td/telegram/message/styling"
+	"github.com/gotd/td/tg"
 )
 
 // MessageTemplate 统一消息模板系统
@@ -293,4 +296,107 @@ func BuildConfigMessage(title string, configs map[string]string) string {
 	}
 	
 	return template.BuildMessage()
+}
+
+// BuildFormattedMessage 构建格式化消息（使用 Telegram 实体）
+func (t *MessageTemplate) BuildFormattedMessage() (string, []tg.MessageEntityClass) {
+	var parts []styling.StyledTextOption
+	
+	// 标题部分
+	if t.Title != "" {
+		if t.Status != "" {
+			parts = append(parts,
+				styling.Plain(StatusIcon(t.Status)+" "),
+				styling.Bold(t.Title),
+				styling.Plain("\n"),
+			)
+		} else {
+			parts = append(parts,
+				styling.Bold(t.Title),
+				styling.Plain("\n"),
+			)
+		}
+	}
+	
+	// 描述部分
+	if t.Description != "" {
+		parts = append(parts,
+			styling.Plain(t.Description+"\n"),
+		)
+	}
+	
+	// 分隔线
+	if len(t.Items) > 0 {
+		parts = append(parts, styling.Plain("\n"))
+	}
+	
+	// 项目列表
+	for _, item := range t.Items {
+		itemParts := t.formatItemFormatted(item)
+		if len(itemParts) > 0 {
+			parts = append(parts, itemParts...)
+			parts = append(parts, styling.Plain("\n"))
+		}
+	}
+	
+	// 操作说明
+	if len(t.Actions) > 0 {
+		parts = append(parts, styling.Plain("\n"))
+		for _, action := range t.Actions {
+			parts = append(parts,
+				styling.Plain("💡 "+action+"\n"),
+			)
+		}
+	}
+	
+	// 页脚
+	if t.Footer != "" {
+		parts = append(parts,
+			styling.Plain("\n"+t.Footer),
+		)
+	}
+	
+	return BuildFormattedMessage(parts...)
+}
+
+// formatItemFormatted 格式化单个项目（用于格式化版本）
+func (t *MessageTemplate) formatItemFormatted(item TemplateItem) []styling.StyledTextOption {
+	if item.Value == "" {
+		return nil
+	}
+	
+	var parts []styling.StyledTextOption
+	
+	// 图标和标签
+	parts = append(parts,
+		styling.Plain(item.Icon+" "),
+		styling.Bold(item.Label+": "),
+	)
+	
+	// 根据类型格式化值
+	switch item.Type {
+	case ItemTypeCode:
+		parts = append(parts, styling.Code(item.Value))
+	case ItemTypeTime:
+		if parsedTime, err := time.Parse(time.RFC3339, item.Value); err == nil {
+			parts = append(parts, styling.Plain(parsedTime.Format("2006-01-02 15:04")))
+		} else {
+			parts = append(parts, styling.Plain(item.Value))
+		}
+	case ItemTypeSize:
+		if size, ok := parseSize(item.Value); ok {
+			parts = append(parts, styling.Plain(FormatSize(size)))
+		} else {
+			parts = append(parts, styling.Plain(item.Value))
+		}
+	case ItemTypeStatus:
+		statusIcon := StatusIcon(item.Value)
+		parts = append(parts, styling.Plain(statusIcon+" "+item.Value))
+	case ItemTypeProgress:
+		parts = append(parts, styling.Plain(formatProgress(item.Value)))
+	default:
+		parts = append(parts, styling.Plain(item.Value))
+	}
+	
+	return parts
 }

@@ -80,10 +80,10 @@ func UpdateUserStorage(ctx context.Context, userStorage *UserStorage) error {
 	if _, err := GetUserStorageByID(ctx, userStorage.ID); err != nil {
 		return fmt.Errorf("存储配置不存在: %w", err)
 	}
-	
+
 	// 检查名称冲突（排除自身）
 	var existing UserStorage
-	if err := db.WithContext(ctx).Where("user_id = ? AND name = ? AND id != ?", 
+	if err := db.WithContext(ctx).Where("user_id = ? AND name = ? AND id != ?",
 		userStorage.UserID, userStorage.Name, userStorage.ID).First(&existing).Error; err == nil {
 		return fmt.Errorf("存储名称 '%s' 已存在", userStorage.Name)
 	} else if err != gorm.ErrRecordNotFound {
@@ -109,12 +109,12 @@ func ToggleUserStorageStatus(ctx context.Context, id uint) (*UserStorage, error)
 	if err := db.WithContext(ctx).Where("id = ?", id).First(&userStorage).Error; err != nil {
 		return nil, fmt.Errorf("存储配置不存在: %w", err)
 	}
-	
+
 	userStorage.Enable = !userStorage.Enable
 	if err := db.WithContext(ctx).Save(&userStorage).Error; err != nil {
 		return nil, fmt.Errorf("更新存储状态失败: %w", err)
 	}
-	
+
 	return &userStorage, nil
 }
 
@@ -130,12 +130,12 @@ func ValidateStorageConfig(storageType, configJSON string) error {
 	if configJSON == "" {
 		return fmt.Errorf("配置不能为空")
 	}
-	
+
 	var config map[string]interface{}
 	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
 		return fmt.Errorf("配置格式无效: %w", err)
 	}
-	
+
 	// 根据存储类型验证必需字段
 	switch storageType {
 	case "alist":
@@ -179,7 +179,7 @@ func ValidateStorageConfig(storageType, configJSON string) error {
 	default:
 		return fmt.Errorf("不支持的存储类型: %s", storageType)
 	}
-	
+
 	return nil
 }
 
@@ -189,11 +189,11 @@ func GetUserStorageWithConfig(ctx context.Context, userID uint, name string) (*U
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	var config map[string]interface{}
 	if err := json.Unmarshal([]byte(userStorage.Config), &config); err != nil {
 		return userStorage, nil, fmt.Errorf("解析存储配置失败: %w", err)
 	}
-	
+
 	return userStorage, config, nil
 }

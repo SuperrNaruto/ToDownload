@@ -33,7 +33,7 @@ func GenFileNameFromMessage(message tg.Message) string {
 // GenFileNameFromMessageWithContext generates a file name using AI when available
 func GenFileNameFromMessageWithContext(ctx context.Context, message tg.Message) string {
 	logger := log.FromContext(ctx)
-	
+
 	// Extract file extension from original filename when available
 	ext := func(media tg.MessageMediaClass) string {
 		// First try to get extension from original filename
@@ -44,7 +44,7 @@ func GenFileNameFromMessageWithContext(ctx context.Context, message tg.Message) 
 				return fileExt
 			}
 		}
-		
+
 		// Fallback to media type based extension
 		switch media := media.(type) {
 		case *tg.MessageMediaDocument:
@@ -66,7 +66,7 @@ func GenFileNameFromMessageWithContext(ctx context.Context, message tg.Message) 
 	}(message.Media)
 
 	text := strings.TrimSpace(message.GetMessage())
-	
+
 	// Try AI renaming if service is available and initialized
 	if IsRenameServiceInitialized() {
 		renameService := GetRenameService()
@@ -76,13 +76,13 @@ func GenFileNameFromMessageWithContext(ctx context.Context, message tg.Message) 
 			if mname, err := GetMediaFileName(message.Media); err == nil && mname != "" {
 				originalFilename = mname
 			}
-			
+
 			logger.Debugf("AI rename: originalFilename=%s, ext=%s, text=%s", originalFilename, ext, text)
-			
+
 			// Create a timeout context for AI call
 			ctxWithTimeout, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
-			
+
 			// Call AI rename service
 			aiFilename, err := renameService.RenameFile(ctxWithTimeout, originalFilename, text)
 			if err == nil && aiFilename != "" {
@@ -92,7 +92,7 @@ func GenFileNameFromMessageWithContext(ctx context.Context, message tg.Message) 
 					// 使用AI模块的清理函数
 					aiFilename = ai.SanitizeFilename(aiFilename)
 				}
-				
+
 				finalName := aiFilename + ext
 				logger.Debugf("AI rename successful: %s -> %s", originalFilename, finalName)
 				return finalName
@@ -101,7 +101,7 @@ func GenFileNameFromMessageWithContext(ctx context.Context, message tg.Message) 
 			// If AI fails, continue with fallback logic below
 		}
 	}
-	
+
 	// Fallback to original logic if AI is not available or fails
 	return genFileNameFromMessageOriginal(message, ext, text)
 }
@@ -166,7 +166,14 @@ func genFileNameFromMessageOriginal(message tg.Message, ext, text string) string
 func BuildCancelButton(taskID string) tg.KeyboardButtonClass {
 	return &tg.KeyboardButtonCallback{
 		Text: "取消任务",
-		Data: fmt.Appendf(nil, "cancel %s", taskID),
+		Data: fmt.Appendf(nil, "cancel_task:%s", taskID),
+	}
+}
+
+func BuildDetailButton(taskID string) tg.KeyboardButtonClass {
+	return &tg.KeyboardButtonCallback{
+		Text: "查看详情",
+		Data: fmt.Appendf(nil, "task_detail:%s", taskID),
 	}
 }
 

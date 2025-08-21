@@ -52,12 +52,12 @@ func initAll(ctx context.Context) {
 	logger := log.FromContext(ctx)
 	i18n.Init(config.Cfg.Lang)
 	logger.Info(i18n.T(i18nk.Initing))
-	
+
 	// Initialize AI rename service after config is loaded
 	if err := tgutil.InitAIRenameService(ctx, config.Cfg); err != nil {
 		logger.Warn("Failed to initialize AI rename service", "error", err)
 	}
-	
+
 	database.Init(ctx)
 	storage.LoadStorages(ctx)
 	if config.Cfg.Telegram.Userbot.Enable {

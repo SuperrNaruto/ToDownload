@@ -69,13 +69,13 @@ func GenerateAlbumFilenames(ctx context.Context, files []tfile.TGFileMessage) ([
 
 	// Generate individual filenames with sequence numbers
 	filenames := make([]string, len(files))
-	
+
 	// Calculate padding for sequence numbers
 	padding := len(fmt.Sprintf("%d", len(files)))
 	if padding < 2 {
 		padding = 2
 	}
-	
+
 	for i, file := range files {
 		ext := filepath.Ext(file.Name())
 		sequence := fmt.Sprintf("%0*d", padding, i+1)

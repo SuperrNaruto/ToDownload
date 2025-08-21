@@ -26,7 +26,3 @@ func (m *TelegramStorageConfig) Validate() error {
 func (m *TelegramStorageConfig) GetType() storenum.StorageType {
 	return storenum.Telegram
 }
-
-func (m *TelegramStorageConfig) GetName() string {
-	return m.Name
-}

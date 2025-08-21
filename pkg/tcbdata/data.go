@@ -7,10 +7,10 @@ import (
 )
 
 const (
-	TypeAdd                   = "add"
-	TypeSetDefault            = "setdefault"
-	TypeDeleteStorageConfirm  = "delete_storage_confirm"
-	TypeStorageToggle         = "storage_toggle"
+	TypeAdd                  = "add"
+	TypeSetDefault           = "setdefault"
+	TypeDeleteStorageConfirm = "delete_storage_confirm"
+	TypeStorageToggle        = "storage_toggle"
 )
 
 // type TaskDataTGFiles struct {

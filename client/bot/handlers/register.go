@@ -59,6 +59,8 @@ func Register(disp dispatcher.Dispatcher) {
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("help_"), handleHelpCallback))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("onboarding_"), handleOnboardingCallback))
 	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("set_default_storage"), handleOnboardingCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("cancel_task:"), handleCancelTaskCallback))
+	disp.AddHandler(handlers.NewCallbackQuery(filters.CallbackQuery.Prefix("task_detail:"), handleTaskDetailCallback))
 	linkRegexFilter, err := filters.Message.Regex(re.TgMessageLinkRegexString)
 	if err != nil {
 		panic("failed to create regex filter: " + err.Error())
@@ -140,7 +142,7 @@ func listenMediaMessageEvent(ch chan userclient.MediaMessageEvent) {
 			// Generate filename using AI if available, otherwise use original
 			fileName := tgutil.GenFileNameFromMessage(*file.Message())
 			storagePath := stor.JoinStoragePath(path.Join(dirPath, fileName))
-			
+
 			injectCtx := tgutil.ExtWithContext(ctx.Context, ctx)
 			taskid := xid.New().String()
 			task, err := tftask.NewTGFileTask(taskid, injectCtx, file, stor, storagePath, nil)
@@ -150,7 +152,7 @@ func listenMediaMessageEvent(ch chan userclient.MediaMessageEvent) {
 			}
 			// Set the custom filename for display purposes
 			task.SetCustomName(fileName)
-			
+
 			if err := core.AddTask(injectCtx, task); err != nil {
 				logger.Errorf("add task failed: %s", err)
 				continue

@@ -14,25 +14,32 @@ import (
 )
 
 func handleCancelCallback(ctx *ext.Context, update *ext.Update) error {
-	parts := strings.Split(string(update.CallbackQuery.Data), " ")
+	data := string(update.CallbackQuery.Data)
+	
+	// 如果是cancel_task:格式，跳过此处理器，让专用处理器处理
+	if strings.HasPrefix(data, "cancel_task:") {
+		return nil // 让其他处理器处理
+	}
+	
+	parts := strings.Split(data, " ")
 	if len(parts) < 2 {
 		// 如果是简单的 "cancel" 回调，清理相关缓存并关闭消息
 		chatID := update.GetUserChat().GetID()
-		
+
 		// 清理存储配置向导缓存
 		wizardKey := fmt.Sprintf("storage_wizard_%d", chatID)
 		cache.Del(wizardKey)
-		
+
 		// 清理存储名称输入缓存
 		nameInputKey := fmt.Sprintf("storage_name_input_%d", chatID)
 		cache.Del(nameInputKey)
-		
+
 		// 编辑消息
 		ctx.EditMessage(chatID, &tg.MessagesEditMessageRequest{
 			ID:      update.CallbackQuery.GetMsgID(),
 			Message: "✅ 操作已取消",
 		})
-		
+
 		ctx.AnswerCallback(msgelem.AlertCallbackAnswer(update.CallbackQuery.GetQueryID(), "操作已取消"))
 		return dispatcher.EndGroups
 	}

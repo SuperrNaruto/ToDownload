@@ -16,27 +16,27 @@ import (
 
 // OnboardingStatus 新用户引导状态
 type OnboardingStatus struct {
-	UserID          int64     `json:"user_id"`
-	Step            int       `json:"step"`
-	HasDefaultStorage bool    `json:"has_default_storage"`
-	HasCustomStorage  bool    `json:"has_custom_storage"`
-	HasUsedSave       bool    `json:"has_used_save"`
+	UserID            int64      `json:"user_id"`
+	Step              int        `json:"step"`
+	HasDefaultStorage bool       `json:"has_default_storage"`
+	HasCustomStorage  bool       `json:"has_custom_storage"`
+	HasUsedSave       bool       `json:"has_used_save"`
 	CompletedAt       *time.Time `json:"completed_at"`
-	LastInteraction   time.Time `json:"last_interaction"`
+	LastInteraction   time.Time  `json:"last_interaction"`
 }
 
 // handleStartCmd 处理智能开始命令
 func handleStartCmd(ctx *ext.Context, update *ext.Update) error {
 	chatID := update.GetUserChat().GetID()
-	
+
 	// 检查用户是否已存在
 	user, err := database.GetUserByChatID(ctx, chatID)
 	isNewUser := err != nil || user == nil
-	
+
 	if isNewUser {
 		return handleNewUserOnboarding(ctx, update)
 	}
-	
+
 	// 检查用户的使用状态，决定显示什么
 	return handleReturningUserWelcome(ctx, update, user)
 }
@@ -44,32 +44,32 @@ func handleStartCmd(ctx *ext.Context, update *ext.Update) error {
 // handleNewUserOnboarding 处理新用户引导
 func handleNewUserOnboarding(ctx *ext.Context, update *ext.Update) error {
 	chatID := update.GetUserChat().GetID()
-	
+
 	shortHash := consts.GitCommit
 	if len(shortHash) > 7 {
 		shortHash = shortHash[:7]
 	}
-	
+
 	template := msgelem.NewInfoTemplate("🎉 欢迎使用 SaveAny Bot!", "")
 	template.AddItem("🤖", "版本", fmt.Sprintf("%s (%s)", consts.Version, shortHash), msgelem.ItemTypeCode)
 	template.AddItem("📁", "功能", "转存 Telegram 文件到各种存储", msgelem.ItemTypeText)
 	template.AddItem("⚡", "特色", "支持多种存储类型、智能规则、AI重命名", msgelem.ItemTypeText)
-	
+
 	template.AddAction("点击下方按钮开始配置")
 	template.SetFooter("💡 完成配置后即可开始使用所有功能")
-	
+
 	// 创建引导状态
 	onboardingStatus := &OnboardingStatus{
 		UserID:          chatID,
 		Step:            1,
 		LastInteraction: time.Now(),
 	}
-	
+
 	cacheKey := fmt.Sprintf("onboarding_%d", chatID)
 	cache.Set(cacheKey, onboardingStatus)
-	
+
 	markup := buildOnboardingStartMarkup()
-	
+
 	// 使用格式化消息发送
 	text, entities := template.BuildFormattedMessage()
 	err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, &ext.ReplyOpts{
@@ -81,29 +81,29 @@ func handleNewUserOnboarding(ctx *ext.Context, update *ext.Update) error {
 			Markup: markup,
 		})
 	}
-	
+
 	return dispatcher.EndGroups
 }
 
 // handleReturningUserWelcome 处理老用户欢迎
 func handleReturningUserWelcome(ctx *ext.Context, update *ext.Update, user *database.User) error {
 	chatID := user.ChatID
-	
+
 	// 分析用户使用情况
 	systemStorages := storage.GetUserStorages(ctx, chatID)
 	userStorages, _ := database.GetUserStoragesByChatID(ctx, chatID)
-	
+
 	hasDefaultStorage := user.DefaultStorage != ""
 	totalStorages := len(systemStorages) + len(userStorages)
-	
+
 	var template *msgelem.MessageTemplate
-	
+
 	if totalStorages == 0 {
 		// 没有任何存储配置
 		template = msgelem.NewInfoTemplate("👋 欢迎回来！", "看起来你还没有配置任何存储")
 		template.AddAction("点击下方按钮开始配置存储")
 		markup := buildQuickSetupMarkup()
-		
+
 		// 使用格式化消息发送
 		text, entities := template.BuildFormattedMessage()
 		err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, &ext.ReplyOpts{
@@ -121,7 +121,7 @@ func handleReturningUserWelcome(ctx *ext.Context, update *ext.Update, user *data
 		template.AddItem("📁", "可用存储", fmt.Sprintf("共 %d 个", totalStorages), msgelem.ItemTypeText)
 		template.AddAction("设置默认存储后可以使用静默模式快速保存")
 		markup := buildSetDefaultStorageMarkup()
-		
+
 		// 使用格式化消息发送
 		text, entities := template.BuildFormattedMessage()
 		err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, &ext.ReplyOpts{
@@ -141,12 +141,12 @@ func handleReturningUserWelcome(ctx *ext.Context, update *ext.Update, user *data
 		if user.ApplyRule {
 			template.AddItem("🎯", "智能规则", "已启用", msgelem.ItemTypeStatus)
 		}
-		
+
 		template.AddAction("转发文件给我开始保存")
 		template.AddAction("使用 /help 查看所有功能")
-		
+
 		markup := buildMainFeaturesMarkup()
-		
+
 		// 使用格式化消息发送
 		text, entities := template.BuildFormattedMessage()
 		err := msgelem.ReplyWithFormattedText(ctx, update, text, entities, &ext.ReplyOpts{
@@ -159,7 +159,7 @@ func handleReturningUserWelcome(ctx *ext.Context, update *ext.Update, user *data
 			})
 		}
 	}
-	
+
 	return dispatcher.EndGroups
 }
 
@@ -275,7 +275,7 @@ func buildMainFeaturesMarkup() *tg.ReplyInlineMarkup {
 func handleOnboardingCallback(ctx *ext.Context, update *ext.Update) error {
 	callback := update.CallbackQuery
 	data := string(callback.Data)
-	
+
 	switch data {
 	case "onboarding_start":
 		return handleOnboardingStep1(ctx, update)
@@ -292,17 +292,17 @@ func handleOnboardingCallback(ctx *ext.Context, update *ext.Update) error {
 // handleOnboardingStep1 处理引导第一步：选择存储类型
 func handleOnboardingStep1(ctx *ext.Context, update *ext.Update) error {
 	template := msgelem.NewInfoTemplate("📋 步骤 1: 添加存储配置", "选择你要使用的存储类型")
-	
+
 	template.AddItem("📁", "Alist", "支持多种云盘服务", msgelem.ItemTypeText)
 	template.AddItem("🌐", "WebDAV", "标准WebDAV协议", msgelem.ItemTypeText)
 	template.AddItem("☁️", "MinIO/S3", "对象存储服务", msgelem.ItemTypeText)
 	template.AddItem("💾", "本地存储", "服务器本地磁盘", msgelem.ItemTypeText)
 	template.AddItem("📱", "Telegram", "上传到Telegram频道", msgelem.ItemTypeText)
-	
+
 	template.AddAction("选择最适合你的存储类型")
-	
+
 	markup := msgelem.BuildStorageTypeSelectMarkup()
-	
+
 	// 使用格式化消息编辑
 	text, entities := template.BuildFormattedMessage()
 	callback := update.CallbackQuery
@@ -316,7 +316,7 @@ func handleOnboardingStep1(ctx *ext.Context, update *ext.Update) error {
 			ReplyMarkup: markup,
 		})
 	}
-	
+
 	return dispatcher.EndGroups
 }
 
@@ -325,11 +325,11 @@ func handleOnboardingSkip(ctx *ext.Context, update *ext.Update) error {
 	chatID := update.GetUserChat().GetID()
 	cacheKey := fmt.Sprintf("onboarding_%d", chatID)
 	cache.Del(cacheKey)
-	
+
 	template := msgelem.NewInfoTemplate("✅ 引导已跳过", "你可以随时使用 /help 查看帮助")
 	template.AddAction("转发文件给我开始保存")
 	template.AddAction("使用 /storage_list 管理存储配置")
-	
+
 	// 使用格式化消息编辑
 	text, entities := template.BuildFormattedMessage()
 	callback := update.CallbackQuery
@@ -342,7 +342,7 @@ func handleOnboardingSkip(ctx *ext.Context, update *ext.Update) error {
 			Message: template.BuildMessage(),
 		})
 	}
-	
+
 	return dispatcher.EndGroups
 }
 
@@ -353,7 +353,7 @@ func checkOnboardingProgress(ctx *ext.Context, chatID int64, action string) {
 	if !exists || status.CompletedAt != nil {
 		return
 	}
-	
+
 	// 更新进度
 	switch action {
 	case "storage_added":
@@ -363,27 +363,27 @@ func checkOnboardingProgress(ctx *ext.Context, chatID int64, action string) {
 	case "file_saved":
 		status.HasUsedSave = true
 	}
-	
+
 	status.LastInteraction = time.Now()
-	
+
 	// 检查是否完成引导
 	if status.HasCustomStorage && status.HasDefaultStorage && status.HasUsedSave {
 		now := time.Now()
 		status.CompletedAt = &now
 		// 可以发送完成引导的祝贺消息
 	}
-	
+
 	cache.Set(cacheKey, status)
 }
 
 // handleSetDefaultStorageSelection 处理设置默认存储的选择界面
 func handleSetDefaultStorageSelection(ctx *ext.Context, update *ext.Update) error {
 	chatID := update.CallbackQuery.GetUserID()
-	
+
 	// 构建选择默认存储的消息
 	template := msgelem.NewInfoTemplate("⭐ 设置默认存储", "选择一个存储作为默认保存位置")
 	template.AddAction("选择后将用于快速保存和静默模式")
-	
+
 	// 获取存储选择的标记
 	markup, err := msgelem.BuildSetDefaultStorageMarkup(ctx, chatID)
 	if err != nil {
@@ -394,7 +394,7 @@ func handleSetDefaultStorageSelection(ctx *ext.Context, update *ext.Update) erro
 		msgelem.EditWithFormattedText(ctx, userPeer, callback.MsgID, text, entities, nil)
 		return dispatcher.EndGroups
 	}
-	
+
 	// 使用格式化消息编辑
 	text, entities := template.BuildFormattedMessage()
 	callback := update.CallbackQuery
@@ -408,6 +408,6 @@ func handleSetDefaultStorageSelection(ctx *ext.Context, update *ext.Update) erro
 			ReplyMarkup: markup,
 		})
 	}
-	
+
 	return dispatcher.EndGroups
 }

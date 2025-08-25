@@ -267,9 +267,84 @@ func (t *MessageTemplate) SetFooter(footer string) *MessageTemplate {
 	return t
 }
 
-// 常用消息构建器
+// BuildRuleTemplateMessage 构建规则模板选择消息
+func BuildRuleTemplateMessage(ruleType string, templates []interface{}) string {
+	template := NewInfoTemplate("📝 选择规则模板", fmt.Sprintf("为 %s 规则选择模板", getRuleTypeDisplayName(ruleType)))
+	
+	// 如果有模板，显示模板信息
+	if len(templates) > 0 {
+		template.AddItem("📊", "可用模板", fmt.Sprintf("%d 个", len(templates)), ItemTypeText)
+		template.AddAction("选择预设模板快速创建规则，或选择自定义")
+	} else {
+		template.AddAction("该规则类型需要自定义设置")
+	}
+	
+	return template.BuildMessage()
+}
 
-// BuildStorageStatusMessage 构建存储状态消息
+// BuildRuleListMessage 构建规则列表消息
+func BuildRuleListMessage(rules []interface{}, applyRule bool) string {
+	template := NewInfoTemplate("📋 规则列表", "管理您的自动文件组织规则")
+	
+	// 显示规则模式状态
+	statusText := "已禁用"
+	if applyRule {
+		statusText = "已启用"
+	}
+	template.AddItem("⚙️", "规则模式", statusText, ItemTypeStatus)
+	template.AddItem("📊", "规则数量", fmt.Sprintf("%d", len(rules)), ItemTypeText)
+	
+	if len(rules) == 0 {
+		template.AddAction("暂无规则，点击添加规则创建第一条规则")
+	} else {
+		template.AddAction("使用内联按钮管理规则")
+	}
+	
+	return template.BuildMessage()
+}
+
+// BuildRuleDetailMessage 构建规则详情消息
+func BuildRuleDetailMessage(ruleID uint, ruleType, data, storageName, dirPath, createdAt string) string {
+	template := NewInfoTemplate("📝 规则详情", fmt.Sprintf("规则 ID: %d", ruleID))
+	
+	template.AddItem(getRuleTypeIcon(ruleType), "规则类型", getRuleTypeDisplayName(ruleType), ItemTypeText)
+	template.AddItem("🔍", "匹配条件", data, ItemTypeCode)
+	template.AddItem("📁", "存储位置", storageName, ItemTypeText)
+	template.AddItem("📂", "目录路径", dirPath, ItemTypeCode)
+	template.AddItem("🕐", "创建时间", createdAt, ItemTypeText)
+	
+	return template.BuildMessage()
+}
+
+// getRuleTypeIcon 获取规则类型图标
+func getRuleTypeIcon(ruleType string) string {
+	switch ruleType {
+	case "FILENAME-REGEX":
+		return "📄"
+	case "MESSAGE-REGEX":
+		return "💬"
+	case "IS-ALBUM":
+		return "🖼️"
+	default:
+		return "📋"
+	}
+}
+
+// getRuleTypeDisplayName 获取规则类型显示名称
+func getRuleTypeDisplayName(ruleType string) string {
+	switch ruleType {
+	case "FILENAME-REGEX":
+		return "文件名匹配"
+	case "MESSAGE-REGEX":
+		return "消息内容匹配"
+	case "IS-ALBUM":
+		return "相册文件"
+	default:
+		return "未知类型"
+	}
+}
+
+// 常用消息构建器
 func BuildStorageStatusMessage(storageName, storageType, status string, isDefault bool) string {
 	template := NewInfoTemplate("存储状态", "")
 
